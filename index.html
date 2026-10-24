@@ -108,6 +108,8 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 .pimg img{width:100%;height:100%;object-fit:contain;display:block}
 .pimg .noimg{color:var(--muted);font-size:13px}
 .pimg .tag{position:absolute;top:10px;left:10px;backdrop-filter:blur(8px)}
+.pimg .tag.postada{background:rgba(12,12,15,.85);color:var(--ok)}
+.pimg .tag.agendada{background:rgba(12,12,15,.85);color:var(--info)}
 .pbody{padding:14px;display:grid;gap:8px}
 .pdate{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .pobs{font-size:13.5px;line-height:1.5}
@@ -117,8 +119,6 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 .tag{padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:.02em}
 .tag.postada{background:rgba(45,212,160,.16);color:var(--ok)}
 .tag.agendada{background:rgba(91,155,255,.16);color:var(--info)}
-.pimg .tag.postada{background:rgba(12,12,15,.85);color:var(--ok)}
-.pimg .tag.agendada{background:rgba(12,12,15,.85);color:var(--info)}
 
 .empty{border:1px dashed var(--line);border-radius:16px;padding:30px;text-align:center;color:var(--muted);margin-top:14px}
 
@@ -144,7 +144,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .bulk-row .fname{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bulk-row input,.bulk-row select{padding:8px 10px;font-size:14px}
 #bulkList{max-height:55vh;overflow-y:auto}
-@media(max-width:600px){.bulk-row{grid-template-columns:48px 1fr;}.bulk-row .fname{display:none}.bulk-row input,.bulk-row select{grid-column:span 1}}
+@media(max-width:600px){.bulk-row{grid-template-columns:48px 1fr}.bulk-row .fname{display:none}}
 
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:12px;display:none;max-width:90%;text-align:center;box-shadow:var(--shadow);z-index:30;font-weight:500;animation:rise .3s both}
 .hidden{display:none !important}
@@ -169,10 +169,11 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       <span class="small" id="bkInfo" style="align-self:center;margin-right:4px"></span>
       <button class="sec small" id="themeBtn" onclick="toggleTheme()">Modo claro</button>
       <button class="sec small" id="autoBtn" onclick="autoBtnClick()">Pasta de backup automático</button>
+      <button class="sec small hidden" id="restoreBtn" onclick="restoreFromFolder()">Restaurar da pasta</button>
       <button class="sec small" onclick="exportBackup()">Exportar backup</button>
       <button class="sec small" onclick="document.getElementById('importFile').click()">Importar backup</button>
       <button class="sec small" onclick="document.getElementById('dsFile').click()">Importar do DS Gestão</button>
-      <input type="file" id="importFile" accept=".json,application/json" class="hidden" onchange="importBackup(event)">
+      <input type="file" id="importFile" accept=".zip,.json,application/zip,application/json" class="hidden" onchange="importBackupFile(event)">
       <input type="file" id="dsFile" accept=".json,application/json" class="hidden" onchange="importDS(event)">
     </div>
   </div>
@@ -245,7 +246,10 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 <script>
 /* ============ base ============ */
 const DB_NAME = 'relatorios-db', STORE = 'kv';
+const IMG_MAX = 720;            // lado maior da imagem guardada (basta para o PDF)
 let state = { clients: [] };
+let imgCache = {};              // id da arte -> imagem (dataURL), carregada da memória do navegador
+let autoWritten = new Map();    // id da arte -> caminho do arquivo já gravado na pasta de backup automático
 let selId = null;
 const pad = n => String(n).padStart(2, '0');
 const isoLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -271,6 +275,7 @@ const periodoLabel = () => `${fmtDate(range.start)} a ${fmtDate(range.end)}`;
 const statusLabel = s => s === 'postada' ? 'Postada' : 'Agendada';
 const pw = p => Number(p.w) > 0 ? Number(p.w) : 1080;
 const ph = p => Number(p.h) > 0 ? Number(p.h) : 1440;
+const imgOf = p => imgCache[p.id] || null;
 function closeDlg(id) { $(id).close(); }
 
 function toast(msg) {
@@ -282,27 +287,32 @@ function toast(msg) {
 }
 
 /* ============ validação dos dados ============ */
-function sanitizePost(p) {
+// imgs: mapa id -> imagem. Imagens antigas (dentro do JSON) são recolhidas aqui.
+function sanitizePost(p, imgs) {
   if (!p || typeof p !== 'object' || !isISO(p.date)) return null;
+  const id = typeof p.id === 'string' && p.id ? p.id : uid();
+  const legacy = typeof p.image === 'string' && p.image.startsWith('data:image/') ? p.image : null;
+  if (legacy) imgs[id] = legacy;
   return {
-    id: typeof p.id === 'string' && p.id ? p.id : uid(),
+    id,
     date: p.date,
     status: p.status === 'postada' ? 'postada' : 'agendada',
-    image: typeof p.image === 'string' && p.image.startsWith('data:image/') ? p.image : null,
+    hasImage: !!legacy || p.hasImage === true,
     w: Number(p.w) > 0 ? Number(p.w) : 1080,
     h: Number(p.h) > 0 ? Number(p.h) : 1440,
     obs: typeof p.obs === 'string' ? p.obs.slice(0, 400) : '',
-    custom: p.custom === true
+    custom: p.custom === true,
+    file: typeof p.file === 'string' ? p.file : undefined
   };
 }
-function sanitizeState(raw) {
+function sanitizeState(raw, imgs) {
   let skipped = 0;
   const clients = [];
   if (!raw || !Array.isArray(raw.clients)) return { state: { clients: [] }, skipped: 0 };
   for (const c of raw.clients) {
     const name = typeof c?.name === 'string' ? c.name.trim().slice(0, 120) : '';
     if (!name) { skipped++; continue; }
-    const posts = (Array.isArray(c.posts) ? c.posts : []).map(sanitizePost);
+    const posts = (Array.isArray(c.posts) ? c.posts : []).map(p => sanitizePost(p, imgs));
     skipped += posts.filter(p => !p).length;
     clients.push({
       id: typeof c.id === 'string' && c.id ? c.id : uid(),
@@ -340,20 +350,72 @@ async function idbSet(key, val) {
     t.onerror = () => rej(t.error);
   });
 }
+async function idbDel(key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const t = db.transaction(STORE, 'readwrite');
+    t.objectStore(STORE).delete(key);
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
+// os dados (texto, datas, status) ficam pequenos; as imagens ficam em registros separados
 async function saveState() {
+  assignFiles();
   await idbSet('data', state);
   scheduleAutoBackup();
 }
+// nome da pasta (cliente) e do arquivo (data_status.jpg) de cada imagem, sem repetir
+function safeFolder(n) {
+  const s = String(n || '').replace(/[\\\/:*?"<>|\x00-\x1F]/g, '-').replace(/\s+/g, ' ').replace(/[. ]+$/g, '').trim().slice(0, 80);
+  return s || 'Cliente';
+}
+function assignFiles() {
+  const pastas = new Set();
+  const pastaDe = new Map();
+  for (const c of state.clients) {
+    const base = safeFolder(c.name);
+    let f = base, k = 2;
+    while (pastas.has(f.toLowerCase())) f = `${base} (${k++})`;
+    pastas.add(f.toLowerCase());
+    pastaDe.set(c.id, f);
+  }
+  for (const c of state.clients) {
+    const pasta = pastaDe.get(c.id);
+    const usados = new Set();
+    const ordem = [...c.posts].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+    for (const p of ordem) {
+      if (!p.hasImage) { delete p.file; continue; }
+      const base = `${p.date}_${p.status}`;
+      let nome = base, k = 2;
+      while (usados.has(nome)) nome = `${base}_${k++}`;
+      usados.add(nome);
+      p.file = `${pasta}/${nome}.jpg`;
+    }
+  }
+}
+async function setImage(p, dataURL) {
+  imgCache[p.id] = dataURL;
+  p.hasImage = true;
+  await idbSet('img_' + p.id, dataURL);
+  autoWritten.delete(p.id);
+}
+async function dropImage(p) {
+  delete imgCache[p.id];
+  p.hasImage = false;
+  await idbDel('img_' + p.id);
+  removeAutoImage(p.id);
+}
 
-/* ============ imagens (sem cortar: mantém a proporção original) ============ */
+/* ============ conversão de imagens ============ */
+// reduz para IMG_MAX no lado maior e mantém a proporção (nada é cortado)
 function compressImage(file) {
   return new Promise((res, rej) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const max = 1440;
-      const s = Math.min(1, max / Math.max(img.width, img.height));
-      const W = Math.round(img.width * s), H = Math.round(img.height * s);
+      const s = Math.min(1, IMG_MAX / Math.max(img.width, img.height));
+      const W = Math.max(1, Math.round(img.width * s)), H = Math.max(1, Math.round(img.height * s));
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
       const ctx = c.getContext('2d');
@@ -361,11 +423,95 @@ function compressImage(file) {
       ctx.fillRect(0, 0, W, H);
       ctx.drawImage(img, 0, 0, W, H);
       URL.revokeObjectURL(url);
-      res({ data: c.toDataURL('image/jpeg', 0.9), w: W, h: H });
+      res({ data: c.toDataURL('image/jpeg', 0.85), w: W, h: H });
     };
     img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('imagem inválida')); };
     img.src = url;
   });
+}
+function dataURLToBytes(url) {
+  const bin = atob(url.split(',')[1]);
+  const u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+function bytesToDataURL(bytes) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(new Blob([bytes], { type: 'image/jpeg' }));
+  });
+}
+
+/* ============ ZIP simples (sem compactação) para o backup ============ */
+const CRC_T = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_T[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function makeZip(files) {
+  const enc = new TextEncoder();
+  const d = new Date();
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | ((d.getSeconds() / 2) | 0);
+  const parts = [], central = [];
+  let offset = 0, cdSize = 0;
+  for (const f of files) {
+    const nb = enc.encode(f.name);
+    const crc = crc32(f.bytes), sz = f.bytes.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, sz, true); lh.setUint32(22, sz, true);
+    lh.setUint16(26, nb.length, true); lh.setUint16(28, 0, true);
+    parts.push(lh.buffer, nb, f.bytes);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, dosTime, true);
+    ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true); ch.setUint32(20, sz, true);
+    ch.setUint32(24, sz, true); ch.setUint16(28, nb.length, true);
+    ch.setUint32(42, offset, true);
+    central.push(ch.buffer, nb);
+    cdSize += 46 + nb.length;
+    offset += 30 + nb.length + sz;
+  }
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+}
+function readZip(buf) {
+  const v = new DataView(buf), u8 = new Uint8Array(buf);
+  let e = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 22 - 65557); i--) {
+    if (v.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  }
+  if (e < 0) throw new Error('zip inválido');
+  const count = v.getUint16(e + 10, true), cdOff = v.getUint32(e + 16, true);
+  const dec = new TextDecoder(), out = {};
+  let p = cdOff;
+  for (let k = 0; k < count; k++) {
+    if (v.getUint32(p, true) !== 0x02014b50) throw new Error('zip inválido');
+    const method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true);
+    const nlen = v.getUint16(p + 28, true), xlen = v.getUint16(p + 30, true), clen = v.getUint16(p + 32, true);
+    const loc = v.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nlen));
+    if (method !== 0) throw new Error('compactação não suportada');
+    const start = loc + 30 + v.getUint16(loc + 26, true) + v.getUint16(loc + 28, true);
+    out[name] = u8.slice(start, start + csize);
+    p += 46 + nlen + xlen + clen;
+  }
+  return out;
 }
 
 /* ============ logo ============ */
@@ -436,6 +582,10 @@ function reroll(pid) {
 
 /* ============ backup automático (pasta escolhida, Chrome/Edge no computador) ============ */
 const AUTO_SUPPORTED = typeof window.showDirectoryPicker === 'function';
+function backupObj() {
+  assignFiles();
+  return { formato: 'relatpost', versao: 2, exportadoEm: new Date().toISOString(), clients: state.clients };
+}
 function lastBackupAt() {
   return Math.max(+localStorage.getItem('lastBackup') || 0, +localStorage.getItem('autoBackupAt') || 0);
 }
@@ -444,14 +594,29 @@ function scheduleAutoBackup() {
   clearTimeout(autoTimer);
   autoTimer = setTimeout(writeAutoBackup, 1500);
 }
+// grava o arquivo de dados e as imagens: pasta por cliente, arquivo por data e status
 async function writeAutoBackup() {
   if (!autoDir) return;
   try {
-    const perm = await autoDir.queryPermission({ mode: 'readwrite' });
-    if (perm !== 'granted') { setupAutoBtn(); return; }
+    if ((await autoDir.queryPermission({ mode: 'readwrite' })) !== 'granted') { setupAutoBtn(); return; }
+    assignFiles();
+    // arte que mudou de pasta ou de nome: apaga o arquivo antigo
+    for (const c of state.clients) for (const p of c.posts) {
+      const antigo = autoWritten.get(p.id);
+      if (antigo && p.hasImage && antigo !== p.file) {
+        try { await removeAutoPath(antigo); } catch (e) {}
+        autoWritten.delete(p.id);
+      }
+    }
+    for (const c of state.clients) for (const p of c.posts) {
+      if (!p.hasImage || autoWritten.has(p.id)) continue;
+      const im = imgOf(p); if (!im) continue;
+      await writeAutoPath(p.file, dataURLToBytes(im));
+      autoWritten.set(p.id, p.file);
+    }
     const fh = await autoDir.getFileHandle('relatpost-backup.json', { create: true });
     const w = await fh.createWritable();
-    await w.write(JSON.stringify(state));
+    await w.write(JSON.stringify(backupObj()));
     await w.close();
     localStorage.setItem('autoBackupAt', Date.now());
     updateBackupInfo();
@@ -459,16 +624,43 @@ async function writeAutoBackup() {
     console.warn('backup automático falhou', e);
   }
 }
+async function removeAutoImage(id) {
+  const path = autoWritten.get(id);
+  autoWritten.delete(id);
+  if (!autoDir || !path) return;
+  try { await removeAutoPath(path); } catch (e) {}
+}
+async function getDirFor(path, create) {
+  const parts = path.split('/');
+  let dir = autoDir;
+  for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i], { create });
+  return { dir, name: parts[parts.length - 1] };
+}
+async function writeAutoPath(path, bytes) {
+  const { dir, name } = await getDirFor(path, true);
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(bytes);
+  await w.close();
+}
+async function removeAutoPath(path) {
+  const { dir, name } = await getDirFor(path, false);
+  await dir.removeEntry(name);
+}
+async function getFileByPath(path) {
+  try {
+    const { dir, name } = await getDirFor(path, false);
+    return await (await dir.getFileHandle(name)).getFile();
+  } catch (e) { return null; }
+}
 async function autoBtnClick() {
   if (!AUTO_SUPPORTED) return;
   try {
     if (!autoDir) {
-      const d = await window.showDirectoryPicker({ mode: 'readwrite' });
-      autoDir = d;
-      await idbSet('backupDir', d);
+      autoDir = await window.showDirectoryPicker({ mode: 'readwrite' });
+      await idbSet('backupDir', autoDir);
     } else {
-      const p = await autoDir.requestPermission({ mode: 'readwrite' });
-      if (p !== 'granted') { toast('Permissão não concedida'); return; }
+      if ((await autoDir.requestPermission({ mode: 'readwrite' })) !== 'granted') { toast('Permissão não concedida'); return; }
     }
     await writeAutoBackup();
     setupAutoBtn();
@@ -479,10 +671,27 @@ async function autoBtnClick() {
 }
 async function setupAutoBtn() {
   const b = $('autoBtn');
-  if (!AUTO_SUPPORTED) { b.style.display = 'none'; return; }
-  if (!autoDir) { b.textContent = 'Pasta de backup automático'; return; }
+  if (!AUTO_SUPPORTED) { b.style.display = 'none'; $('restoreBtn').classList.add('hidden'); return; }
+  if (!autoDir) { b.textContent = 'Pasta de backup automático'; $('restoreBtn').classList.add('hidden'); return; }
   const perm = await autoDir.queryPermission({ mode: 'readwrite' });
   b.textContent = perm === 'granted' ? 'Backup automático ativo' : 'Reativar backup automático';
+  $('restoreBtn').classList.remove('hidden');
+}
+async function restoreFromFolder() {
+  if (!autoDir) return;
+  try {
+    if ((await autoDir.requestPermission({ mode: 'readwrite' })) !== 'granted') { toast('Permissão não concedida'); return; }
+    const data = JSON.parse(await (await (await autoDir.getFileHandle('relatpost-backup.json')).getFile()).text());
+    const imgs = {};
+    for (const c of data.clients || []) for (const p of (c.posts || [])) {
+      if (!p || !p.id) continue;
+      const f = (p.file && await getFileByPath(p.file)) || await getFileByPath('images/' + p.id + '.jpg');
+      if (f) imgs[p.id] = await bytesToDataURL(new Uint8Array(await f.arrayBuffer()));
+    }
+    await applyBackup(data, imgs);
+  } catch (e) {
+    toast('Não encontrei um backup válido nessa pasta');
+  }
 }
 
 /* ============ contador de dias sem backup ============ */
@@ -547,12 +756,17 @@ function clearClientForm() {
   $('cId').value = ''; $('cName').value = ''; $('cPhone').value = '';
   $('formTitle').textContent = 'Novo cliente';
 }
-function deleteClient(id) {
+async function deleteClient(id) {
   const c = state.clients.find(x => x.id === id);
   if (!confirm(`Excluir o cliente "${c.name}" e todas as artes dele? Isso não pode ser desfeito.`)) return;
+  const pasta = ((c.posts.find(p => p.file) || {}).file || '').split('/')[0];
+  for (const p of c.posts) if (p.hasImage) await dropImage(p);
+  if (pasta && autoDir) { try { await autoDir.removeEntry(pasta, { recursive: true }); } catch (e) {} }
   state.clients = state.clients.filter(x => x.id !== id);
   selId = null;
-  saveState().then(() => { renderAll(); toast('Cliente excluído'); });
+  await saveState();
+  renderAll();
+  toast('Cliente excluído');
 }
 
 /* ============ artes ============ */
@@ -567,7 +781,9 @@ async function addPost() {
     try { img = await compressImage(file); }
     catch (e) { toast('Não consegui abrir essa imagem'); return; }
   }
-  c.posts.push({ id: uid(), date, status, image: img ? img.data : null, w: img ? img.w : 1080, h: img ? img.h : 1440, obs: sortear(status), custom: false });
+  const p = { id: uid(), date, status, hasImage: false, w: img ? img.w : 1080, h: img ? img.h : 1440, obs: sortear(status), custom: false };
+  c.posts.push(p);
+  if (img) await setImage(p, img.data);
   range = { start: date.slice(0, 7) + '-01', end: monthEnd(date.slice(0, 7)) };
   await saveState();
   renderAll();
@@ -579,11 +795,15 @@ function setStatus(pid, val) {
   if (!p.custom) p.obs = sortear(val);
   saveState().then(renderAll);
 }
-function deletePost(pid) {
+async function deletePost(pid) {
   if (!confirm('Excluir esta arte?')) return;
   const c = current();
+  const p = c.posts.find(x => x.id === pid);
+  if (p && p.hasImage) await dropImage(p);
   c.posts = c.posts.filter(x => x.id !== pid);
-  saveState().then(() => { renderAll(); toast('Arte excluída'); });
+  await saveState();
+  renderAll();
+  toast('Arte excluída');
 }
 
 /* editar uma arte */
@@ -595,7 +815,7 @@ function openEdit(pid) {
   $('eFile').value = '';
   $('eObs').value = obsDe(p);
   editObsInitial = $('eObs').value;
-  $('eInfo').textContent = p.image ? 'A imagem atual fica se você não escolher outra.' : 'Esta arte não tem imagem.';
+  $('eInfo').textContent = p.hasImage ? 'A imagem atual fica se você não escolher outra.' : 'Esta arte não tem imagem.';
   $('editDlg').showModal();
 }
 function eSortear() { $('eObs').value = sortear($('eStatus').value); }
@@ -608,8 +828,11 @@ async function saveEdit(e) {
   const obs = $('eObs').value.trim();
   const file = $('eFile').files[0];
   if (file) {
-    try { const img = await compressImage(file); p.image = img.data; p.w = img.w; p.h = img.h; }
-    catch (err) { toast('Não consegui abrir essa imagem'); return; }
+    try {
+      const img = await compressImage(file);
+      p.w = img.w; p.h = img.h;
+      await setImage(p, img.data);
+    } catch (err) { toast('Não consegui abrir essa imagem'); return; }
   }
   p.date = date;
   if (obs !== editObsInitial) {
@@ -659,7 +882,9 @@ async function saveBulk() {
     if (!isISO(it.date)) { falhas++; continue; }
     try {
       const img = await compressImage(it.file);
-      c.posts.push({ id: uid(), date: it.date, status: it.status, image: img.data, w: img.w, h: img.h, obs: sortear(it.status), custom: false });
+      const p = { id: uid(), date: it.date, status: it.status, hasImage: false, w: img.w, h: img.h, obs: sortear(it.status), custom: false };
+      c.posts.push(p);
+      await setImage(p, img.data);
       ok++;
       if (!primeira || it.date < primeira) primeira = it.date;
     } catch (e) { falhas++; }
@@ -677,10 +902,12 @@ function renderPeriod() {
   const c = current(); if (!c) return;
   const posts = getPosts(c);
   const postadas = posts.filter(p => p.status === 'postada').length;
-  const cards = posts.length ? `<div class="pgrid">${posts.map((p, i) => `
+  const cards = posts.length ? `<div class="pgrid">${posts.map((p, i) => {
+      const im = imgOf(p);
+      return `
       <div class="pcard" style="animation-delay:${i * 60}ms">
-        <div class="pimg" ${p.image ? `style="--ar:${pw(p)}/${ph(p)}"` : ''}>
-          ${p.image ? `<img src="${p.image}" alt="">` : '<span class="noimg">sem imagem</span>'}
+        <div class="pimg" ${im ? `style="--ar:${pw(p)}/${ph(p)}"` : ''}>
+          ${im ? `<img src="${im}" alt="">` : '<span class="noimg">sem imagem</span>'}
           <span class="tag ${p.status}">${statusLabel(p.status)}</span>
         </div>
         <div class="pbody">
@@ -696,7 +923,7 @@ function renderPeriod() {
             <button class="danger small" onclick="deletePost('${p.id}')">Excluir</button>
           </div>
         </div>
-      </div>`).join('')}</div>`
+      </div>`; }).join('')}</div>`
     : `<div class="empty">Nenhuma arte neste período. Adicione uma acima ou escolha outro período.</div>`;
 
   $('periodBox').innerHTML = `
@@ -826,7 +1053,7 @@ function renderDetail() {
   renderPeriod();
 }
 
-/* ============ PDF (é o mesmo usado na prévia, no download e no WhatsApp) ============ */
+/* ============ PDF (mesmo usado na prévia, no download e no WhatsApp) ============ */
 function buildPDF(c, posts) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -858,12 +1085,13 @@ function buildPDF(c, posts) {
     if (y + CH > 285) { doc.addPage(); base(); y = 18; }
     doc.setFillColor(255, 255, 255);
     doc.roundedRect(M, y, W - 2 * M, CH, 3, 3, 'F');
-    // a imagem entra inteira, proporcional, dentro de uma caixa fixa
+    // a imagem entra inteira, proporcional, centralizada numa caixa fixa
     const bx = M + 4, by = y + 4, bw = 44, bh = CH - 8;
-    if (p.image) {
+    const im = imgOf(p);
+    if (im) {
       const s = Math.min(bw / pw(p), bh / ph(p));
       const iw = pw(p) * s, ih = ph(p) * s;
-      try { doc.addImage(p.image, 'JPEG', bx + (bw - iw) / 2, by + (bh - ih) / 2, iw, ih); } catch (e) {}
+      try { doc.addImage(im, 'JPEG', bx + (bw - iw) / 2, by + (bh - ih) / 2, iw, ih); } catch (e) {}
     }
     const tx = bx + bw + 8;
     const larg = W - tx - M - 4;
@@ -951,29 +1179,63 @@ async function importDS(e) {
     toast('Arquivo do DS Gestão inválido. Use o "Backup completo" do sistema.');
   }
 }
-function exportBackup() {
-  const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+
+// backup manual: um .zip com backup.json (dados) e a pasta images/ (uma foto por arte)
+async function exportBackup() {
+  const enc = new TextEncoder();
+  const files = [{ name: 'backup.json', bytes: enc.encode(JSON.stringify(backupObj())) }];
+  for (const c of state.clients) for (const p of c.posts) {
+    const im = imgOf(p);
+    if (im) files.push({ name: 'imagens/' + p.file, bytes: dataURLToBytes(im) });
+  }
+  const blob = makeZip(files);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `backup-relatorios-${hoje}.json`;
+  a.download = `backup-relatorios-${hoje}.zip`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   localStorage.setItem('lastBackup', Date.now());
   updateBackupInfo();
   toast('Backup salvo na pasta de Downloads');
 }
-async function importBackup(e) {
+async function importBackupFile(e) {
   const f = e.target.files[0];
   e.target.value = '';
   if (!f) return;
-  let data;
-  try { data = JSON.parse(await f.text()); }
-  catch (err) { toast('Arquivo de backup inválido'); return; }
-  if (!data || !Array.isArray(data.clients)) { toast('Arquivo de backup inválido'); return; }
-  const { state: limpo, skipped } = sanitizeState(data);
+  try {
+    let data, imgs = {};
+    if (/\.zip$/i.test(f.name)) {
+      const entries = readZip(await f.arrayBuffer());
+      if (!entries['backup.json']) throw new Error('formato');
+      data = JSON.parse(new TextDecoder().decode(entries['backup.json']));
+      for (const c of data.clients || []) for (const p of (c.posts || [])) {
+        if (!p || !p.id) continue;
+        const k1 = p.file ? 'imagens/' + p.file : null;
+        const k2 = 'images/' + p.id + '.jpg';
+        const key = k1 && entries[k1] ? k1 : (entries[k2] ? k2 : null);
+        if (key) imgs[p.id] = await bytesToDataURL(entries[key]);
+      }
+    } else {
+      data = JSON.parse(await f.text());
+    }
+    await applyBackup(data, imgs);
+  } catch (err) {
+    toast('Arquivo de backup inválido');
+  }
+}
+async function applyBackup(data, imgs) {
+  if (!data || !Array.isArray(data.clients)) throw new Error('formato');
+  const { state: limpo, skipped } = sanitizeState(data, imgs);
+  for (const c of limpo.clients) for (const p of c.posts) if (p.hasImage && !imgs[p.id]) p.hasImage = false;
   if (!limpo.clients.length) { toast('Nenhum cliente válido neste backup'); return; }
   if (!confirm(`Isso substitui os dados atuais por ${limpo.clients.length} cliente(s) do backup. Continuar?`)) return;
+  for (const c of state.clients) for (const p of c.posts) if (p.hasImage) await idbDel('img_' + p.id);
+  imgCache = {};
+  autoWritten = new Map();
   state = limpo; selId = null;
+  for (const c of state.clients) for (const p of c.posts) {
+    if (p.hasImage && imgs[p.id]) { imgCache[p.id] = imgs[p.id]; await idbSet('img_' + p.id, imgs[p.id]); }
+  }
   await saveState();
   renderAll();
   toast('Backup restaurado' + (skipped ? `. ${skipped} item(ns) inválido(s) foram ignorados` : ''));
@@ -987,8 +1249,21 @@ function renderAll() { renderClients(); renderDetail(); updateBackupInfo(); }
   logoToPNG().then(d => { LOGO_PNG = d; });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
   try {
-    const { state: s } = sanitizeState(await idbGet('data'));
+    const legado = {};
+    const { state: s } = sanitizeState(await idbGet('data'), legado);
     state = s;
+    let migrou = false;
+    for (const c of state.clients) for (const p of c.posts) {
+      if (legado[p.id]) {                       // versão antiga: imagem dentro dos dados
+        imgCache[p.id] = legado[p.id];
+        await idbSet('img_' + p.id, legado[p.id]);
+        migrou = true;
+      } else if (p.hasImage) {
+        const v = await idbGet('img_' + p.id);
+        if (v) imgCache[p.id] = v; else p.hasImage = false;
+      }
+    }
+    if (migrou) await saveState();
   } catch (e) { state = { clients: [] }; }
   if (AUTO_SUPPORTED) {
     try { autoDir = await idbGet('backupDir'); } catch (e) { autoDir = null; }
