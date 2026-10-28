@@ -1057,7 +1057,7 @@ function renderDetail() {
 function buildPDF(c, posts) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const W = 210, M = 15, CH = 60, GAP = 5;
+  const W = 210, M = 15, GAP = 5, CW = (W - 2 * M - 2 * GAP) / 3, CH = 78;
   const base = () => {
     doc.setFillColor(12, 12, 15);
     doc.rect(0, 0, W, 297, 'F');
@@ -1080,33 +1080,62 @@ function buildPDF(c, posts) {
     doc.text('Nenhuma arte neste período.', M, 42);
     return doc;
   }
-  let y = 36;
-  for (const p of posts) {
-    if (y + CH > 285) { doc.addPage(); base(); y = 18; }
+  // grade de 3 colunas x 3 linhas (9 cards por página), card vertical: imagem em cima, texto embaixo
+  let pageTop = 36;
+  posts.forEach((p, k) => {
+    const slot = k % 9;
+    if (k > 0 && slot === 0) { doc.addPage(); base(); pageTop = 18; }
+    const x = M + (slot % 3) * (CW + GAP);
+    const y = pageTop + Math.floor(slot / 3) * (CH + GAP);
+    const cor = p.status === 'postada' ? [31, 157, 85] : [29, 111, 216];
+
+    // brilho neon em volta do card (cor do status, transparente)
+    try {
+      for (let g = 3; g >= 1; g--) {
+        doc.setGState(new doc.GState({ opacity: 0.1 }));
+        doc.setFillColor(...cor);
+        doc.roundedRect(x - g * 1.1, y - g * 1.1, CW + g * 2.2, CH + g * 2.2, 3 + g, 3 + g, 'F');
+      }
+      doc.setGState(new doc.GState({ opacity: 1 }));
+    } catch (e) {}
+    // card branco com borda fina na cor do status
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(M, y, W - 2 * M, CH, 3, 3, 'F');
-    // a imagem entra inteira, proporcional, centralizada numa caixa fixa
-    const bx = M + 4, by = y + 4, bw = 44, bh = CH - 8;
+    doc.roundedRect(x, y, CW, CH, 3, 3, 'F');
+    doc.setDrawColor(...cor); doc.setLineWidth(0.5);
+    doc.roundedRect(x, y, CW, CH, 3, 3, 'S');
+
+    // imagem inteira (sem cortar), centralizada na área de cima do card
+    const ix = x + 3, iy = y + 3, iw_box = CW - 6, ih_box = 40;
+    doc.setFillColor(240, 240, 243);
+    doc.roundedRect(ix, iy, iw_box, ih_box, 2, 2, 'F');
     const im = imgOf(p);
     if (im) {
-      const s = Math.min(bw / pw(p), bh / ph(p));
+      const s = Math.min(iw_box / pw(p), ih_box / ph(p));
       const iw = pw(p) * s, ih = ph(p) * s;
-      try { doc.addImage(im, 'JPEG', bx + (bw - iw) / 2, by + (bh - ih) / 2, iw, ih); } catch (e) {}
+      try { doc.addImage(im, 'JPEG', ix + (iw_box - iw) / 2, iy + (ih_box - ih) / 2, iw, ih); } catch (e) {}
     }
-    const tx = bx + bw + 8;
-    const larg = W - tx - M - 4;
-    doc.setTextColor(0); doc.setFont(undefined, 'bold'); doc.setFontSize(12);
-    doc.text('Observações', tx, y + 12);
-    doc.setFont(undefined, 'normal'); doc.setFontSize(11);
-    doc.text(doc.splitTextToSize(obsDe(p), larg), tx, y + 19);
-    doc.setFontSize(12);
-    doc.text(`Data: ${fmtDate(p.date)}`, tx, y + 42);
-    const cor = p.status === 'postada' ? [31, 157, 85] : [29, 111, 216];
-    doc.setFont(undefined, 'bold'); doc.setTextColor(...cor);
-    doc.text(`Status: ${statusLabel(p.status)}`, tx, y + 51);
-    doc.setFont(undefined, 'normal'); doc.setTextColor(0);
-    y += CH + GAP;
-  }
+
+
+    // data e observação embaixo
+    const tx = x + 5, larg = CW - 10;
+    doc.setTextColor(0); doc.setFont(undefined, 'bold'); doc.setFontSize(9.5);
+    doc.text(`Data: ${fmtDate(p.date)}`, tx, y + 49);
+    doc.setFont(undefined, 'normal'); doc.setFontSize(8.5); doc.setTextColor(40);
+    let lines = doc.splitTextToSize(obsDe(p), larg);
+    if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].replace(/\s*\S*$/, '') + '…'; }
+    doc.text(lines, tx, y + 55);
+
+    // etiqueta de status e número, abaixo da observação
+    const ty = y + 70;
+    doc.setFillColor(...cor);
+    doc.roundedRect(tx, ty, 22, 5.5, 1.5, 1.5, 'F');
+    doc.setFont(undefined, 'bold'); doc.setFontSize(8); doc.setTextColor(255);
+    doc.text(statusLabel(p.status), tx + 11, ty + 3.8, { align: 'center' });
+    doc.setFillColor(12, 12, 15);
+    doc.roundedRect(x + CW - 13, ty, 8, 5.5, 1.5, 1.5, 'F');
+    doc.text(String(k + 1).padStart(2, '0'), x + CW - 9, ty + 3.8, { align: 'center' });
+    doc.setTextColor(0);
+  });
   return doc;
 }
 function fileName(c) {
