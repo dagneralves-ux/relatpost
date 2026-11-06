@@ -167,6 +167,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     </div>
     <div class="row">
       <span class="small" id="bkInfo" style="align-self:center;margin-right:4px"></span>
+      <button class="sec small" id="syncBtn" onclick="RPSync.open()">Sincronizar</button>
       <button class="sec small" id="themeBtn" onclick="toggleTheme()">Modo claro</button>
       <button class="sec small" id="autoBtn" onclick="autoBtnClick()">Pasta de backup automático</button>
       <button class="sec small hidden" id="restoreBtn" onclick="restoreFromFolder()">Restaurar da pasta</button>
@@ -202,6 +203,40 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   <section class="panel" id="detail"></section>
 </main>
 </div>
+
+
+<!-- Sincronização entre aparelhos -->
+<dialog id="syncDlg">
+  <div class="eyebrow">Sincronização</div>
+  <h2 style="margin-bottom:6px">Mesmos dados em todos os aparelhos</h2>
+  <div class="small" id="syncInfo" style="margin-bottom:10px"></div>
+  <div id="syncCfg" class="hidden">
+    <label>URL do projeto Supabase</label>
+    <input id="syncUrl" type="url" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off">
+    <label>Chave pública (publishable)</label>
+    <input id="syncKey" type="text" placeholder="sb_publishable_..." autocomplete="off">
+    <div class="row" style="margin-top:12px"><button type="button" onclick="RPSync.saveCfg()">Conectar</button></div>
+  </div>
+  <div id="syncLogin" class="hidden">
+    <label>E-mail</label>
+    <input id="syncEmail" type="email" autocomplete="username">
+    <label>Senha</label>
+    <input id="syncPass" type="password" autocomplete="current-password">
+    <div class="row" style="margin-top:12px">
+      <button type="button" onclick="RPSync.login(false)">Entrar</button>
+      <button type="button" class="sec" onclick="RPSync.login(true)">Criar conta</button>
+    </div>
+  </div>
+  <div id="syncOut" class="hidden">
+    <div class="row">
+      <button type="button" onclick="RPSync.now()">Sincronizar agora</button>
+      <button type="button" class="sec" onclick="RPSync.logout()">Desconectar</button>
+    </div>
+    <div class="small" style="margin-top:8px">Desconectar aqui também sai do DS Gestão neste aparelho, se estiverem no mesmo endereço.</div>
+  </div>
+  <div class="small" id="syncMsg" style="margin-top:10px"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="sec" onclick="closeDlg('syncDlg')">Fechar</button></div>
+</dialog>
 
 <!-- Editar uma arte -->
 <dialog id="editDlg">
@@ -243,6 +278,247 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* RPSync — sincronização opcional via Supabase (um registro por usuário + imagens comprimidas no Storage) */
+(function(){
+  'use strict';
+  var BUCKET='relatpost', TABLE='relatpost_dados', CDN='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  var sb=null, user=null, meta=null, tmr=null, busy=false, again=false, ver=0, lastOk=0, status='login', lastErr='', lastRun=0;
+  function $$(id){ return document.getElementById(id); }
+  function LS(k,v){ try{ if(v===undefined) return localStorage.getItem(k)||''; localStorage.setItem(k,v); }catch(e){} return ''; }
+  var byId=function(a,b){ return a.id<b.id?-1:a.id>b.id?1:0; };
+
+  /* ---------- metadados locais (ficam no IndexedDB, junto dos dados) ---------- */
+  async function loadMeta(){
+    if(meta) return;
+    var m=null; try{ m=await idbGet('sync_meta'); }catch(e){}
+    meta=Object.assign({rev:0,snap:{},tomb:{},img:{},dirty:{},pending:false,first:true,account:''},m||{});
+  }
+  function saveMeta(){ try{ return idbSet('sync_meta',meta); }catch(e){ return null; } }
+
+  /* ---------- o que mudou desde a última vez ---------- */
+  function hC(c){ return (c.name||'')+'|'+(c.phone||''); }
+  function hP(p){ return [p.date,p.status,p.w,p.h,p.obs||'',p.custom?1:0,p.hasImage?1:0].join('|'); }
+  function pkey(p){ return [p.date,p.status,p.w,p.h,p.obs||''].join('|'); }
+  function track(){
+    if(!meta) return;
+    var t=Date.now(), cur={}, changed=false;
+    state.clients.forEach(function(c){
+      var h=hC(c); cur[c.id]=h; if(meta.snap[c.id]!==h){ c.u=t; changed=true; }
+      c.posts.forEach(function(p){ var hp=hP(p); cur[p.id]=hp; if(meta.snap[p.id]!==hp){ p.u=t; changed=true; } });
+    });
+    Object.keys(meta.snap).forEach(function(id){ if(!(id in cur)){ meta.tomb[id]=t; changed=true; } });
+    meta.snap=cur; if(changed) meta.pending=true;
+  }
+  function resnap(){
+    var s={}; state.clients.forEach(function(c){ s[c.id]=hC(c); c.posts.forEach(function(p){ s[p.id]=hP(p); }); }); meta.snap=s;
+  }
+  function localDoc(){
+    return {clients:state.clients.map(function(c){ return {id:c.id,name:c.name,phone:c.phone||'',u:c.u||0,posts:c.posts.map(function(p){
+      return {id:p.id,date:p.date,status:p.status,hasImage:!!p.hasImage,w:p.w,h:p.h,obs:p.obs||'',custom:!!p.custom,u:p.u||0}; })}; }),tomb:meta.tomb};
+  }
+  function stable(d){
+    var cs=(d.clients||[]).slice().sort(byId).map(function(c){ return {id:c.id,name:c.name,phone:c.phone||'',u:c.u||0,posts:(c.posts||[]).slice().sort(byId).map(function(p){
+      return {id:p.id,date:p.date,status:p.status,hasImage:!!p.hasImage,w:p.w,h:p.h,obs:p.obs||'',custom:!!p.custom,u:p.u||0}; })}; });
+    var t={}; Object.keys(d.tomb||{}).sort().forEach(function(k){ t[k]=d.tomb[k]; });
+    var im={}; Object.keys(d.imgs||{}).sort().forEach(function(k){ im[k]=d.imgs[k]; });
+    return JSON.stringify({clients:cs,tomb:t,imgs:im});
+  }
+
+  /* ---------- junção item a item (vale o mais recente; exclusões não ressuscitam) ---------- */
+  function merge(L,R,first){
+    var tomb=Object.assign({},R.tomb||{});
+    Object.keys(L.tomb||{}).forEach(function(k){ tomb[k]=Math.max(tomb[k]||0,L.tomb[k]); });
+    var res=new Map(), names=new Map();
+    function put(c){
+      var nk=(c.name||'').trim().toLowerCase(), t=res.get(c.id);
+      if(!t && first) t=names.get(nk);
+      if(!t){ t={id:c.id,name:c.name,phone:c.phone||'',u:c.u||0,posts:new Map()}; res.set(c.id,t); names.set(nk,t); }
+      else if((c.u||0)>t.u){ t.name=c.name; t.phone=c.phone||''; t.u=c.u||0; }
+      (c.posts||[]).forEach(function(p){
+        var ex=t.posts.get(p.id);
+        if(!ex && first){
+          var k=pkey(p); t.posts.forEach(function(q){ if(!ex && pkey(q)===k) ex=q; });
+          if(ex && !ex.hasImage && p.hasImage){ t.posts.delete(ex.id); ex=null; }
+          else if(ex){ return; }
+        }
+        if(!ex || (p.u||0)>(ex.u||0)) t.posts.set(p.id,Object.assign({},p));
+      });
+    }
+    (R.clients||[]).forEach(put); (L.clients||[]).forEach(put);
+    var out=[];
+    res.forEach(function(c){
+      if(tomb[c.id] && tomb[c.id]>=c.u) return;
+      var ps=[]; c.posts.forEach(function(p){ if(!(tomb[p.id] && tomb[p.id]>=(p.u||0))) ps.push(p); });
+      out.push({id:c.id,name:c.name,phone:c.phone,u:c.u,posts:ps});
+    });
+    out.sort(function(a,b){ return a.name.localeCompare(b.name,'pt-BR'); });
+    var cut=Date.now()-120*864e5; Object.keys(tomb).forEach(function(k){ if(tomb[k]<cut) delete tomb[k]; });
+    return {clients:out,tomb:tomb};
+  }
+  async function applyMerged(m){
+    var raw={clients:m.clients.map(function(c){ return {id:c.id,name:c.name,phone:c.phone,u:c.u,posts:c.posts.map(function(p){ return Object.assign({},p); })}; })};
+    state=sanitizeState(raw,{}).state;
+    if(selId && !state.clients.some(function(c){ return c.id===selId; })) selId=null;
+    assignFiles(); await idbSet('data',state); resnap();
+  }
+
+  /* ---------- imagens: sobe só o que é novo, baixa só o que falta, apaga o que saiu ---------- */
+  function path(id,v){ return user.id+'/'+id+'_'+v+'.jpg'; }
+  async function syncImages(m,remoteImgs){
+    var surv={}, imgs={}, del=[];
+    m.clients.forEach(function(c){ c.posts.forEach(function(p){ if(p.hasImage) surv[p.id]=1; }); });
+    Object.keys(remoteImgs).forEach(function(id){ if(surv[id]) imgs[id]=remoteImgs[id]; else del.push(path(id,remoteImgs[id])); });
+    Object.keys(meta.dirty).forEach(function(id){ if(!surv[id]) delete meta.dirty[id]; });
+    var ids=Object.keys(surv);
+    for(var i=0;i<ids.length;i++){
+      var id=ids[i], rv=imgs[id]||0, have=imgCache[id];
+      if(have && (meta.dirty[id] || !rv)){
+        var nv=Date.now()+i, blob=new Blob([dataURLToBytes(have)],{type:'image/jpeg'});
+        var up=await sb.storage.from(BUCKET).upload(path(id,nv),blob,{contentType:'image/jpeg',upsert:true});
+        if(up.error) throw up.error;
+        if(rv) del.push(path(id,rv));
+        imgs[id]=nv; meta.img[id]=nv; delete meta.dirty[id];
+      }
+    }
+    if(del.length){ try{ await sb.storage.from(BUCKET).remove(del); }catch(e){} }
+    return imgs;
+  }
+  async function pullImages(imgs){
+    var changed=false;
+    for(var id in imgs){
+      var rv=imgs[id], lv=meta.img[id]||0;
+      if(lv===rv || meta.dirty[id]) continue;
+      if(imgCache[id] && !lv){ meta.img[id]=rv; continue; }
+      try{
+        var d=await sb.storage.from(BUCKET).download(path(id,rv));
+        if(d.error||!d.data) continue;
+        var url=await new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); }; r.readAsDataURL(d.data); });
+        imgCache[id]=url; await idbSet('img_'+id,url); meta.img[id]=rv; changed=true;
+      }catch(e){}
+    }
+    return changed;
+  }
+
+  /* ---------- ciclo de sincronização ---------- */
+  async function run(){
+    if(!sb||!user) return;
+    if(busy){ again=true; return; }
+    busy=true; lastRun=Date.now(); setStatus('sync');
+    try{
+      await loadMeta();
+      if(meta.account && meta.account!==user.id){ meta.first=true; meta.rev=0; meta.img={}; }
+      for(var attempt=0;attempt<4;attempt++){
+        track();
+        var startVer=ver;
+        var r=await sb.from(TABLE).select('rev,dados').eq('user_id',user.id).maybeSingle();
+        if(r.error) throw r.error;
+        var rem=r.data?(r.data.dados||{}):null, remRev=r.data?r.data.rev:0;
+        var L=localDoc();
+        var m=merge(L,rem||{},!!(rem&&meta.first));
+        var changedLocal=stable({clients:m.clients})!==stable({clients:L.clients});
+        if(changedLocal) await applyMerged(m);
+        var imgs=await syncImages(m,(rem&&rem.imgs)||{});
+        meta.tomb=m.tomb;
+        var doc={v:2,clients:m.clients,tomb:m.tomb,imgs:imgs};
+        var same=!!rem && stable(doc)===stable(rem), ok=true;
+        if(!same){
+          if(!rem){
+            var ins=await sb.from(TABLE).insert({user_id:user.id,dados:doc,rev:1});
+            if(ins.error){ if(ins.error.code==='23505') ok=false; else throw ins.error; } else remRev=0;
+          } else {
+            var up=await sb.from(TABLE).update({dados:doc,rev:remRev+1,atualizado_em:new Date().toISOString()}).eq('user_id',user.id).eq('rev',remRev).select('rev');
+            if(up.error) throw up.error;
+            ok=!!(up.data&&up.data.length);
+          }
+          if(ok) meta.rev=remRev+1;
+        } else meta.rev=remRev;
+        if(!ok) continue;
+        meta.first=false; meta.account=user.id;
+        if(startVer===ver) meta.pending=false;
+        await saveMeta();
+        var got=await pullImages(imgs);
+        if(got||changedLocal){ await saveMeta(); renderAll(); }
+        lastOk=Date.now(); setStatus('ok'); break;
+      }
+    }catch(e){
+      lastErr=(e&&e.message)||String(e); setStatus(navigator.onLine?'err':'off');
+    }finally{
+      busy=false; if(again){ again=false; schedule(800); }
+    }
+  }
+  function schedule(ms){ clearTimeout(tmr); tmr=setTimeout(run,ms); }
+
+  /* ---------- ganchos chamados pelo app ---------- */
+  function touch(){ ver++; if(!meta) return; saveMeta(); if(sb&&user) schedule(2500); }
+  function imgDirty(id){ if(meta){ meta.dirty[id]=true; } }
+
+  /* ---------- conexão e login ---------- */
+  function lib(){
+    return new Promise(function(res,rej){
+      if(window.supabase&&window.supabase.createClient) return res();
+      var s=document.createElement('script'); s.src=CDN; s.onload=function(){ res(); }; s.onerror=function(){ rej(new Error('sem conexão')); };
+      document.head.appendChild(s);
+    });
+  }
+  async function connect(){
+    var url=LS('ds_sb_url'), key=LS('ds_sb_key');
+    if(!url||!key){ setStatus('login'); return; }
+    try{
+      await lib();
+      sb=window.supabase.createClient(url,key);
+      var g=await sb.auth.getSession();
+      user=g.data&&g.data.session?g.data.session.user:null;
+      sb.auth.onAuthStateChange(function(ev,s){ var u=s?s.user:null; var novo=!!u&&(!user||user.id!==u.id); user=u; paintDlg(); if(!u) setStatus('login'); else if(novo) schedule(300); });
+      if(user) schedule(300); else setStatus('login');
+    }catch(e){ setStatus('off'); }
+  }
+  var LABEL={login:'Sincronizar',sync:'Sincronizando…',ok:'Sincronizado',off:'Sem conexão',err:'Erro ao sincronizar'};
+  function setStatus(s){
+    status=s; var b=$$('syncBtn'); if(b){ b.textContent=LABEL[s]||'Sincronizar'; b.title=s==='ok'&&lastOk?('Última sincronização: '+new Date(lastOk).toLocaleTimeString('pt-BR')):(s==='err'?lastErr:''); }
+    paintDlg();
+  }
+  function msg(t,bad){ var m=$$('syncMsg'); if(!m) return; m.textContent=t||''; m.style.color=bad?'#ff6b6b':''; }
+  function paintDlg(){
+    var d=$$('syncDlg'); if(!d) return;
+    var hasCfg=!!(LS('ds_sb_url')&&LS('ds_sb_key')&&sb);
+    $$('syncCfg').classList.toggle('hidden',hasCfg);
+    $$('syncLogin').classList.toggle('hidden',!hasCfg||!!user);
+    $$('syncOut').classList.toggle('hidden',!user);
+    $$('syncInfo').textContent=user
+      ? ('Conectado como '+(user.email||'')+'. '+(status==='sync'?'Sincronizando…':status==='ok'?'Tudo sincronizado.':status==='off'?'Sem conexão: as mudanças ficam no aparelho e sobem depois.':status==='err'?'Não foi possível sincronizar agora.':''))
+      : 'Entre com a mesma conta do DS Gestão para ter os mesmos clientes e artes em todos os aparelhos.';
+  }
+  function open(){ paintDlg(); msg(''); var d=$$('syncDlg'); if(d&&!d.open) d.showModal(); }
+  async function saveCfg(){
+    var u=$$('syncUrl').value.trim(), k=$$('syncKey').value.trim();
+    if(!/^https:\/\/.+\.supabase\.co\/?$/.test(u)||k.length<20){ msg('Confira a URL e a chave do Supabase.',true); return; }
+    LS('ds_sb_url',u.replace(/\/$/,'')); LS('ds_sb_key',k); msg('Conectando…'); await connect(); paintDlg(); msg('');
+  }
+  async function login(create){
+    var e=$$('syncEmail').value.trim(), p=$$('syncPass').value;
+    if(!e||p.length<6){ msg('Informe e-mail e senha (mínimo 6 caracteres).',true); return; }
+    msg(create?'Criando conta…':'Entrando…');
+    var r=create?await sb.auth.signUp({email:e,password:p}):await sb.auth.signInWithPassword({email:e,password:p});
+    if(r.error){ msg(r.error.message||'Não foi possível entrar.',true); return; }
+    if(create&&!(r.data&&r.data.session)){ msg('Conta criada. Confirme o e-mail e depois entre.'); return; }
+    msg(''); var d=$$('syncDlg'); if(d&&d.open) d.close();
+  }
+  async function logout(){ try{ await sb.auth.signOut(); }catch(e){} user=null; setStatus('login'); }
+  async function now(){ msg(''); schedule(0); }
+
+  async function start(){
+    await loadMeta(); track(); await saveMeta();
+    setStatus('login');
+    await connect();
+    document.addEventListener('visibilitychange',function(){ if(!document.hidden&&Date.now()-lastRun>15000) schedule(300); });
+    window.addEventListener('online',function(){ schedule(500); });
+    setInterval(function(){ if(!document.hidden&&sb&&user) schedule(0); },60000);
+  }
+  window.RPSync={start:start,track:track,touch:touch,imgDirty:imgDirty,open:open,saveCfg:saveCfg,login:login,logout:logout,now:now,_merge:merge};
+})();
+
+</script>
 <script>
 /* ============ base ============ */
 const DB_NAME = 'relatorios-db', STORE = 'kv';
@@ -302,7 +578,8 @@ function sanitizePost(p, imgs) {
     h: Number(p.h) > 0 ? Number(p.h) : 1440,
     obs: typeof p.obs === 'string' ? p.obs.slice(0, 400) : '',
     custom: p.custom === true,
-    file: typeof p.file === 'string' ? p.file : undefined
+    file: typeof p.file === 'string' ? p.file : undefined,
+    u: Number(p.u) > 0 ? Number(p.u) : undefined
   };
 }
 function sanitizeState(raw, imgs) {
@@ -318,6 +595,7 @@ function sanitizeState(raw, imgs) {
       id: typeof c.id === 'string' && c.id ? c.id : uid(),
       name,
       phone: typeof c.phone === 'string' ? c.phone.trim().slice(0, 40) : '',
+      u: Number(c.u) > 0 ? Number(c.u) : undefined,
       posts: posts.filter(Boolean)
     });
   }
@@ -362,8 +640,10 @@ async function idbDel(key) {
 // os dados (texto, datas, status) ficam pequenos; as imagens ficam em registros separados
 async function saveState() {
   assignFiles();
+  if (window.RPSync) RPSync.track();
   await idbSet('data', state);
   scheduleAutoBackup();
+  if (window.RPSync) RPSync.touch();
 }
 // nome da pasta (cliente) e do arquivo (data_status.jpg) de cada imagem, sem repetir
 function safeFolder(n) {
@@ -399,6 +679,7 @@ async function setImage(p, dataURL) {
   p.hasImage = true;
   await idbSet('img_' + p.id, dataURL);
   autoWritten.delete(p.id);
+  if (window.RPSync) RPSync.imgDirty(p.id);
 }
 async function dropImage(p) {
   delete imgCache[p.id];
@@ -1282,6 +1563,8 @@ function renderAll() { renderClients(); renderDetail(); updateBackupInfo(); }
     const { state: s } = sanitizeState(await idbGet('data'), legado);
     state = s;
     let migrou = false;
+    const sm = await idbGet('sync_meta').catch(() => null);
+    const syncKeep = (sm && sm.img) || {};
     for (const c of state.clients) for (const p of c.posts) {
       if (legado[p.id]) {                       // versão antiga: imagem dentro dos dados
         imgCache[p.id] = legado[p.id];
@@ -1289,7 +1572,7 @@ function renderAll() { renderClients(); renderDetail(); updateBackupInfo(); }
         migrou = true;
       } else if (p.hasImage) {
         const v = await idbGet('img_' + p.id);
-        if (v) imgCache[p.id] = v; else p.hasImage = false;
+        if (v) imgCache[p.id] = v; else if (!syncKeep[p.id]) p.hasImage = false;
       }
     }
     if (migrou) await saveState();
@@ -1300,6 +1583,7 @@ function renderAll() { renderClients(); renderDetail(); updateBackupInfo(); }
   renderAll();
   setupAutoBtn();
   checkBackupReminder();
+  if (window.RPSync) RPSync.start();
 })();
 </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
