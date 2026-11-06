@@ -1,5 +1,5 @@
 /* Service worker — RelatPost. Dados ficam no aparelho e, se ativado, no Supabase (nunca em cache aqui). */
-const CACHE = 'relatpost-v10';
+const CACHE = 'relatpost-v13';
 const CORE = ['./', 'index.html', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
