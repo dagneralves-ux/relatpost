@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#09090a">
+<title>Relatório de postagens</title>
+<style>
+:root{--bg:#09090a;--s:#131314;--s2:#1a1a1c;--ink:#f4f4f5;--mut:#9a9aa2;--line:rgba(255,255,255,.09);--grad:linear-gradient(135deg,#ff6e22,#ff3d00);--ok:#3ddc97}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,"Segoe UI",Inter,system-ui,sans-serif;min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 16px 60px}
+header{display:flex;align-items:center;gap:16px;margin-bottom:22px}
+.av{width:64px;height:64px;border-radius:18px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none;font-weight:700;color:#111;font-size:22px}
+.av img{width:100%;height:100%;object-fit:contain}
+h1{font-size:clamp(22px,5vw,32px);letter-spacing:-.03em;line-height:1.1}.sub{color:var(--mut);font-size:14px;margin-top:4px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.chip{background:var(--s);border:1px solid var(--line);border-radius:18px;padding:14px 16px}
+.chip b{display:block;font-size:30px;letter-spacing:-.04em;line-height:1.1}.chip span{color:var(--mut);font-size:13px}
+.chip.hi{background:var(--grad);border-color:transparent}.chip.hi span{color:#fff;opacity:.85}
+.bar{height:10px;border-radius:99px;background:var(--s2);overflow:hidden;margin:0 0 22px}.bar i{display:block;height:100%;background:var(--grad);border-radius:99px}
+.meta{color:var(--mut);font-size:13.5px;margin:-8px 0 18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.card{background:var(--s);border:1px solid var(--line);border-radius:20px;overflow:hidden;cursor:pointer;animation:in .5s both}
+.card .im{aspect-ratio:4/5;background:#000;display:grid;place-items:center}.card .im:empty{display:none}.card img{width:100%;height:100%;object-fit:contain}
+.card .bd{padding:12px 14px 14px}.card .d{font-weight:600;font-size:14px}.card .t{color:var(--mut);font-size:13px;margin-top:4px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.st{display:inline-block;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px;margin-top:8px;background:var(--s2);color:var(--mut)}.st.p{background:rgba(61,220,151,.14);color:var(--ok)}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(8px);display:none;place-items:center;padding:16px;z-index:10}.lb.on{display:grid}
+.lb .box{max-width:560px;width:100%;max-height:100%;overflow:auto;background:var(--s);border-radius:22px;border:1px solid var(--line)}
+.lb img{width:100%;display:block;background:#000}.lb .tx{padding:16px}.lb .tx p{color:var(--mut);font-size:14px;white-space:pre-wrap;margin-top:6px}
+.msg{text-align:center;color:var(--mut);padding:80px 16px}footer{text-align:center;color:var(--mut);font-size:12.5px;margin-top:34px}
+@media(max-width:520px){.chip b{font-size:24px}.grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head><body>
+<div class="wrap" id="app"><div class="msg">Carregando relatório…</div></div>
+<div class="lb" id="lb" onclick="this.classList.remove('on')"><div class="box" onclick="event.stopPropagation()"><img id="lbi" alt=""><div class="tx" id="lbt"></div></div></div>
+<script>
+const $=id=>document.getElementById(id), esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const q=new URLSearchParams(location.hash.slice(1)), tok=q.get('t'), u=(q.get('u')||'').replace(/\/$/,''), k=q.get('k');
+const fd=iso=>{const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y};
+let DATA=null;
+function ini(n){return String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()}
+function show(i){const p=DATA.posts[i];$('lbi').src=p.i||'';$('lbi').style.display=p.i?'block':'none';$('lbt').innerHTML='<b>'+fd(p.d)+' · '+(p.s==='postada'?'Postada':'Agendada')+'</b>'+(p.l?'<p>'+esc(p.l)+'</p>':'<p>'+esc(p.t)+'</p>');$('lb').classList.add('on')}
+async function go(){
+  if(!tok||!u||!k){$('app').innerHTML='<div class="msg">Link incompleto. Peça um novo link ao seu designer.</div>';return}
+  try{
+    const r=await fetch(u+'/rest/v1/rpc/get_relatorio',{method:'POST',headers:{apikey:k,Authorization:'Bearer '+k,'Content-Type':'application/json'},body:JSON.stringify({t:tok})});
+    if(!r.ok)throw 0; const d=await r.json(); if(!d||!d.posts)throw 0; DATA=d;
+    document.title='Relatório · '+d.nome;
+    const pct=d.total?Math.round(d.postadas/d.total*100):0;
+    $('app').innerHTML=`<header><div class="av">${d.logo?`<img src="${esc(d.logo)}" alt="">`:esc(ini(d.nome))}</div><div><h1>${esc(d.nome)}</h1><div class="sub">Relatório de postagens · ${esc(d.periodo)}</div></div></header>
+    <div class="chips"><div class="chip hi"><b>${d.total}</b><span>Artes do período</span></div><div class="chip"><b>${d.postadas}</b><span>Postadas</span></div><div class="chip"><b>${d.agendadas}</b><span>Agendadas</span></div></div>
+    <div class="bar" role="img" aria-label="${pct}% postadas"><i style="width:${pct}%"></i></div>
+    ${d.meta?`<p class="meta">Combinado: ${d.meta} artes por mês · entregues: ${d.total}</p>`:''}
+    <div class="grid">${d.posts.map((p,i)=>`<article class="card" style="animation-delay:${Math.min(i,12)*40}ms" onclick="show(${i})"><div class="im">${p.i?`<img loading="lazy" src="${esc(p.i)}" alt="">`:''}</div><div class="bd"><div class="d">${fd(p.d)}</div><div class="t">${esc(p.l||p.t)}</div><span class="st ${p.s==='postada'?'p':''}">${p.s==='postada'?'Postada':'Agendada'}</span></div></article>`).join('')}</div>
+    <footer>Atualizado em ${d.atualizado?new Date(d.atualizado).toLocaleDateString('pt-BR'):''}</footer>`;
+  }catch(e){$('app').innerHTML='<div class="msg">Não encontrei este relatório. O link pode ter sido desativado.</div>'}
+}
+go();
+</script></body></html>

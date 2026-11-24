@@ -404,6 +404,76 @@ dialog.pvd{max-width:1000px}
 }
 @media(max-width:380px){.pill{max-width:112px}.chip b{font-size:24px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ══════════ v6 · menu em pílula, transições e polimento ══════════ */
+.tabpill{position:relative;display:inline-flex!important;justify-self:center;gap:2px;padding:5px;border-radius:999px;background:#131314;border:1px solid var(--line)}
+.tabpill button{position:relative;z-index:1;background:transparent!important;border:0;box-shadow:none!important;color:var(--muted);font:600 13.5px/1.2 var(--font);padding:10px 20px;border-radius:999px;min-width:92px;text-align:center;white-space:nowrap;filter:none!important}
+.tabpill button:hover:not([aria-selected=true]){color:var(--ink)}
+.tabpill button[aria-selected=true]{color:#fff}
+.tabpill button:disabled{opacity:.4;cursor:default}
+.tabpill::before{content:"";position:absolute;top:5px;bottom:5px;left:0;width:var(--ink-w,0);transform:translateX(var(--ink-x,0));border-radius:999px;background:var(--grad);box-shadow:0 6px 18px rgba(255,77,18,.35);transition:transform .45s cubic-bezier(.3,1.25,.4,1),width .45s cubic-bezier(.3,1.25,.4,1);opacity:0}
+.tabpill.has-ink::before{opacity:1}
+.no-clients .tabpill{display:none!important}
+@media(max-width:860px){
+  .tabpill{display:flex!important;grid-column:1/-1;justify-self:stretch;order:5}
+  .tabpill button{flex:1;min-width:0;padding:10px 6px}
+}
+/* sheet no celular */
+@media(max-width:860px){
+  dialog{touch-action:pan-y}
+  dialog[open]{animation:sheetUp .42s cubic-bezier(.2,.9,.25,1)}
+  dialog::before{content:"";display:block;width:42px;height:5px;border-radius:3px;background:#fff;opacity:.22;margin:-10px auto 12px}
+  dialog.sheet::before{position:absolute;left:50%;top:8px;transform:translateX(-50%);margin:0;z-index:3}
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+dialog[open].no-anim{animation:none}
+/* toast */
+#toast{display:none;align-items:center;gap:14px;overflow:hidden;pointer-events:auto;padding:13px 20px 15px}
+#toast .tundo{background:none;border:0;padding:4px 2px;color:#e8420a;font-weight:800;font-size:14px;box-shadow:none;cursor:pointer;filter:none}
+#toast .tbar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--grad);transform-origin:left;animation:tbar var(--dur,3s) linear forwards}
+@keyframes tbar{to{transform:scaleX(0)}}
+/* cards clicáveis */
+.th{transition:transform .25s cubic-bezier(.2,.9,.25,1),box-shadow .25s}
+@media(hover:hover){.th:hover{transform:translateY(-3px)}}
+.th:active{transform:scale(.985)}
+/* barras do ritmo crescem em sequência */
+.bars .bar i{transform-origin:center bottom;animation:growY .75s cubic-bezier(.34,1.4,.5,1) backwards}
+.bars .bar:nth-child(1) i{animation-delay:.05s}.bars .bar:nth-child(2) i{animation-delay:.11s}.bars .bar:nth-child(3) i{animation-delay:.17s}.bars .bar:nth-child(4) i{animation-delay:.23s}.bars .bar:nth-child(5) i{animation-delay:.29s}.bars .bar:nth-child(6) i{animation-delay:.35s}.bars .bar:nth-child(7) i{animation-delay:.41s}
+@keyframes growY{from{transform:scaleY(0)}to{transform:none}}
+/* esqueleto durante a sincronização */
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+body.skel .th,body.skel .gp,body.skel .sidecard{position:relative}
+body.skel .th>*,body.skel .gp>*{opacity:0!important}
+body.skel .th::after,body.skel .gp::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.09) 50%,transparent 70%);background-size:200% 100%;animation:shim 1.3s linear infinite}
+/* vazios ilustrados */
+.empty-ill{display:block;width:150px;max-width:60%;margin:0 auto 10px;animation:floaty 4.5s ease-in-out infinite}
+.empty-ill svg{width:100%;height:auto;display:block}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+/* ══════════ v7 · lote, Instagram, link, histórico, contrato ══════════ */
+.dirbtn{margin-top:8px;justify-self:start}
+.bulk-dist{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:6px 0 12px;padding:12px;border:1px solid var(--line);border-radius:16px;background:#131314}
+.bulk-dist label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.bulk-dist input,.bulk-dist select{padding:9px 10px;border-radius:10px;font-size:13.5px}
+.bkbanner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px auto 0;max-width:1240px;padding:12px 16px;border-radius:16px;background:rgba(255,77,18,.1);border:1px solid rgba(255,77,18,.35);font-size:13.5px}
+.bkbanner[hidden]{display:none}
+.bkbanner span{flex:1;min-width:200px}
+.bkbanner button{padding:8px 14px;font-size:13px}
+.contrato{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:11px 14px;border-radius:14px;background:#131314;border:1px solid var(--line);font-size:13.5px}
+.contrato b{font-weight:600}
+.contrato.low{border-color:rgba(255,77,18,.5);background:rgba(255,77,18,.09)}
+.contrato.ok{border-color:rgba(61,220,151,.35)}
+.contrato .lnk{background:none;border:0;color:var(--accent-ink);padding:2px 4px;font-size:13px;box-shadow:none;cursor:pointer;text-decoration:underline}
+.pd-obs.leg{white-space:pre-wrap;max-height:160px;overflow:auto}
+.rowlist{display:grid;gap:8px;margin:12px 0;max-height:52vh;overflow:auto}
+.rowitem{display:grid;grid-template-columns:auto 56px minmax(0,1fr);gap:12px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:14px;background:#131314}
+.rowitem img{width:56px;height:56px;object-fit:cover;border-radius:10px;background:#000}
+.rowitem .t{font-size:13px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--ink)}
+.rowitem .d{font-size:12px;color:var(--muted)}
+.hrow{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#131314}
+.hrow small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.linkbox{display:flex;gap:8px;margin:12px 0}
+.linkbox input{flex:1;min-width:0;font-size:12.5px}
 </style>
 </head>
 <body>
@@ -417,7 +487,11 @@ dialog.pvd{max-width:1000px}
         <small>Painel do designer</small>
       </div>
     </div>
-    <nav class="crumb" id="crumb" aria-label="Você está em"><span>RelatPost</span><i>›</i><b>Clientes</b></nav>
+    <nav class="crumb tabpill" id="crumb" role="tablist" aria-label="Seções">
+      <button type="button" role="tab" data-t="clientes" aria-selected="true" onclick="navTab('clientes')">Clientes</button>
+      <button type="button" role="tab" data-t="grid" aria-selected="false" onclick="navTab('grid')">Grade</button>
+      <button type="button" role="tab" data-t="cal" aria-selected="false" onclick="navTab('cal')">Calendário</button>
+    </nav>
     <div class="hact">
       <button class="pill" id="syncBtn" data-s="login" onclick="RPSync.open()">Sincronizar</button>
       <div class="dwrap" id="dadosWrap">
@@ -430,6 +504,8 @@ dialog.pvd{max-width:1000px}
           <button class="mi" role="menuitem" onclick="toggleMenu(false);openDS()">Abrir DS Gestão</button>
           <button class="mi" role="menuitem" onclick="toggleMenu(false);setDSUrl()">Endereço do DS Gestão…</button>
           <button class="mi" role="menuitem" onclick="toggleMenu(false);document.getElementById('dsFile').click()">Importar do DS Gestão (arquivo)</button>
+          <button class="mi" role="menuitem" onclick="toggleMenu(false);openIG()">Importar posts do Instagram…</button>
+          <button class="mi" role="menuitem" onclick="toggleMenu(false);openHist()">Histórico de versões</button>
           <button class="mi" role="menuitem" id="autoBtn" onclick="toggleMenu(false);autoBtnClick()">Pasta de backup automático</button>
           <button class="mi hidden" role="menuitem" id="restoreBtn" onclick="toggleMenu(false);restoreFromFolder()">Restaurar da pasta</button>
         </div>
@@ -441,6 +517,7 @@ dialog.pvd{max-width:1000px}
 </header>
 
 <div class="wrap">
+<div id="bkBanner" class="bkbanner" hidden></div>
 <main>
   <div class="side-wrap"><section class="panel side" aria-label="Clientes">
     <div class="shead"><h2>Clientes</h2><button class="icon" onclick="openNewClient()" aria-label="Novo cliente" title="Novo cliente"><svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>
@@ -462,6 +539,8 @@ dialog.pvd{max-width:1000px}
       <span class="small" id="dropName"></span>
     </label>
     <input type="file" id="pFile" accept="image/*" multiple class="sr">
+    <input type="file" id="pDir" webkitdirectory multiple class="sr" onchange="pickDir(this)">
+    <button type="button" class="sec small dirbtn" onclick="$('pDir').click()">Ou escolha uma pasta inteira</button>
     <div class="row">
       <div class="grow"><label for="pDate">Data da postagem</label><input type="date" id="pDate"></div>
       <div class="grow"><label for="pStatus">Status</label>
@@ -570,6 +649,14 @@ dialog.pvd{max-width:1000px}
 <dialog id="bulkDlg">
   <h2 style="margin-bottom:4px">Adicionar várias artes</h2>
   <div class="small" style="margin-bottom:10px">Defina a data de cada arte. As imagens entram do jeito que estão, sem corte.</div>
+  <div class="bulk-dist" id="bulkDist">
+    <div><label for="bdStart">Começar em</label><input type="date" id="bdStart"></div>
+    <div><label for="bdMode">Ritmo</label><select id="bdMode">
+      <option value="dia">Todos os dias</option><option value="util">Dias úteis</option><option value="smw">Seg, qua e sex</option>
+      <option value="tts">Ter, qui e sáb</option><option value="d2">A cada 2 dias</option><option value="sem">1 por semana</option></select></div>
+    <button type="button" class="sec small" onclick="applyDist()">Distribuir datas</button>
+    <button type="button" class="sec small" onclick="useFileDates()">Usar data do arquivo</button>
+  </div>
   <div id="bulkList"></div>
   <div class="row" style="justify-content:flex-end;margin-top:16px">
     <button type="button" class="sec" onclick="cancelBulk()">Cancelar</button>
@@ -577,6 +664,11 @@ dialog.pvd{max-width:1000px}
   </div>
 </dialog>
 
+<dialog id="igDlg"><div id="igBody"></div></dialog>
+<dialog id="histDlg"><div id="histBody"></div></dialog>
+<dialog id="linkDlg"><div id="linkBody"></div></dialog>
+<input type="file" id="igDir" webkitdirectory multiple class="sr" onchange="igLoad([...this.files]);this.value=''">
+<input type="file" id="igFile" accept=".zip,.json,image/*" multiple class="sr" onchange="igLoad([...this.files]);this.value=''">
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -617,11 +709,11 @@ dialog.pvd{max-width:1000px}
   }
   function localDoc(){
     return {clients:state.clients.map(function(c){ return {id:c.id,name:c.name,phone:c.phone||'',ds:c.ds||'',logo:c.logo||'',u:c.u||0,posts:c.posts.map(function(p){
-      return {id:p.id,date:p.date,status:p.status,hasImage:!!p.hasImage,w:p.w,h:p.h,obs:p.obs||'',custom:!!p.custom,u:p.u||0}; })}; }),tomb:meta.tomb};
+      return {id:p.id,date:p.date,status:p.status,hasImage:!!p.hasImage,w:p.w,h:p.h,obs:p.obs||'',leg:p.leg||'',custom:!!p.custom,u:p.u||0}; })}; }),tomb:meta.tomb};
   }
   function stable(d){
     var cs=(d.clients||[]).slice().sort(byId).map(function(c){ return {id:c.id,name:c.name,phone:c.phone||'',ds:c.ds||'',logo:c.logo||'',u:c.u||0,posts:(c.posts||[]).slice().sort(byId).map(function(p){
-      return {id:p.id,date:p.date,status:p.status,hasImage:!!p.hasImage,w:p.w,h:p.h,obs:p.obs||'',custom:!!p.custom,u:p.u||0}; })}; });
+      return {id:p.id,date:p.date,status:p.status,hasImage:!!p.hasImage,w:p.w,h:p.h,obs:p.obs||'',leg:p.leg||'',custom:!!p.custom,u:p.u||0}; })}; });
     var t={}; Object.keys(d.tomb||{}).sort().forEach(function(k){ t[k]=d.tomb[k]; });
     var im={}; Object.keys(d.imgs||{}).sort().forEach(function(k){ im[k]=d.imgs[k]; });
     return JSON.stringify({clients:cs,tomb:t,imgs:im});
@@ -860,12 +952,24 @@ const ph = p => Number(p.h) > 0 ? Number(p.h) : 1440;
 const imgOf = p => imgCache[p.id] || null;
 function closeDlg(id) { $(id).close(); }
 
-function toast(msg) {
+function toast(msg, undo) {
   const t = $('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  clearTimeout(t._h);
-  t._h = setTimeout(() => t.style.display = 'none', 2800);
+  clearTimeout(t._h); t._out = 0;
+  const dur = undo ? 7000 : 2800;
+  t.style.setProperty('--dur', dur + 'ms');
+  t.innerHTML = '<span></span>' + (undo ? '<button type="button" class="tundo">Desfazer</button>' : '') + '<i class="tbar"></i>';
+  t.firstChild.textContent = msg;
+  t.classList.toggle('has-undo', !!undo);
+  if (undo) t.querySelector('.tundo').onclick = () => { clearTimeout(t._h); t.style.display = 'none'; undo(); };
+  t.style.display = 'flex';
+  const hide = () => {
+    if (rmotion() || !t.animate) { t.style.display = 'none'; return; }
+    const a = t.animate([{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%,10px) scale(.96)' }], { duration: 200, easing: 'ease-in' });
+    a.onfinish = () => { t.style.display = 'none'; };
+  };
+  t._h = setTimeout(hide, dur);
+  t.onpointerenter = () => clearTimeout(t._h);
+  t.onpointerleave = () => { t._h = setTimeout(hide, 2200); };
 }
 
 /* ============ validação dos dados ============ */
@@ -883,6 +987,7 @@ function sanitizePost(p, imgs) {
     w: Number(p.w) > 0 ? Number(p.w) : 1080,
     h: Number(p.h) > 0 ? Number(p.h) : 1440,
     obs: typeof p.obs === 'string' ? p.obs.slice(0, 400) : '',
+    leg: typeof p.leg === 'string' ? p.leg.slice(0, 2200) : undefined,
     custom: p.custom === true,
     file: typeof p.file === 'string' ? p.file : undefined,
     u: Number(p.u) > 0 ? Number(p.u) : undefined
@@ -1375,6 +1480,8 @@ async function deleteClient(id) {
   const c = state.clients.find(x => x.id === id);
   if (!confirm(`Excluir o cliente "${c.name}" e todas as artes dele? Isso não pode ser desfeito.`)) return;
   const pasta = ((c.posts.find(p => p.file) || {}).file || '').split('/')[0];
+  const snapC = JSON.parse(JSON.stringify(c)), snapImgs = {}, snapDs = c.ds;
+  for (const p of c.posts) if (imgCache[p.id]) snapImgs[p.id] = imgCache[p.id];
   for (const p of c.posts) if (p.hasImage) await dropImage(p);
   if (pasta && autoDir) { try { await autoDir.removeEntry(pasta, { recursive: true }); } catch (e) {} }
   if (c.ds) { const ig = dsIgn(); ig.push(c.ds); try { localStorage.setItem('rp_ds_ign', JSON.stringify(ig)); } catch (e) {} }
@@ -1382,7 +1489,12 @@ async function deleteClient(id) {
   selId = null;
   await saveState();
   renderAll();
-  toast('Cliente excluído');
+  toast('Cliente excluído', async () => {
+    for (const p of snapC.posts) if (snapImgs[p.id]) { await setImage(p, snapImgs[p.id]); }
+    if (snapDs) { const ig = dsIgn().filter(x => x !== snapDs); try { localStorage.setItem('rp_ds_ign', JSON.stringify(ig)); } catch (e) {} }
+    state.clients.push(snapC); selId = snapC.id;
+    await saveState(); renderAll(); toast('Cliente restaurado');
+  });
 }
 
 /* ============ artes ============ */
@@ -1416,14 +1528,18 @@ function setStatus(pid, val) {
   saveState().then(renderAll);
 }
 async function deletePost(pid) {
-  if (!confirm('Excluir esta arte?')) return;
   const c = current();
   const p = c.posts.find(x => x.id === pid);
+  const snapP = p ? JSON.parse(JSON.stringify(p)) : null, snapImg = p ? imgCache[p.id] : null, cid = c.id;
   if (p && p.hasImage) await dropImage(p);
   c.posts = c.posts.filter(x => x.id !== pid);
   await saveState();
   renderAll();
-  toast('Arte excluída');
+  toast('Arte excluída', async () => {
+    const cc = state.clients.find(x => x.id === cid); if (!cc || !snapP) return;
+    cc.posts.push(snapP); if (snapImg) await setImage(snapP, snapImg);
+    await saveState(); renderAll(); toast('Arte restaurada');
+  });
 }
 
 /* editar uma arte */
@@ -1726,6 +1842,7 @@ function renderDetail() {
       <span class="sp"></span>
       <button class="act sec" onclick="showPreview()">${I.eye}<span>Prévia</span></button>
       <button class="act sec" onclick="downloadPDF()">${I.down}<span>PDF</span></button>
+      <button class="act sec" onclick="openLink()">${I.link}<span>Link</span></button>
       <button class="act" onclick="sendWhats()">${I.send}<span class="l-long">Enviar no WhatsApp</span><span class="l-short">WhatsApp</span></button>
     </div>`;
   renderPeriod();
@@ -1914,7 +2031,7 @@ async function dsPull(force) {
   if (!cx) { if (force) toast('Entre na conta em "Sincronizar" para ler os clientes do DS Gestão'); return; }
   dsBusy = true;
   try {
-    const r = await cx.sb.from('clientes').select('id,empresa,responsavel,telefone,logo_url,status');
+    const r = await cx.sb.from('clientes').select('*');
     if (r.error) throw r.error;
     dsLast = Date.now();
     const ign = new Set(dsIgn());
@@ -1937,6 +2054,7 @@ async function dsPull(force) {
         c.name = name; if (phone) c.phone = phone; atual++;
       }
       if (!c.logo && d.logo_url) logos.push({ c, url: d.logo_url });
+      try { dsContrato(c, d); } catch (e) {}
     }
     for (const t of logos) {
       try { const resp = await fetch(t.url, { mode: 'cors' }); if (resp.ok) t.c.logo = await logoCompress(await resp.blob(), '#ffffff'); } catch (e) {}
@@ -2143,6 +2261,7 @@ function renderPostDlg() {
           <button class="${p.status === 'agendada' ? 'on' : ''}" role="radio" aria-checked="${p.status === 'agendada'}" onclick="setStatus('${p.id}','agendada')">${I.clock}Agendada</button>
         </div>
         <div><p class="pd-cap">Texto que aparece no relatório</p><p class="pd-obs">${esc(obsDe(p))}</p></div>
+        ${p.leg ? `<div><p class="pd-cap">Legenda do post</p><p class="pd-obs leg">${esc(p.leg)}</p></div>` : ''}
         <div class="row">
           <button class="sec small" onclick="reroll('${p.id}')">Trocar frase</button>
           <button class="sec small" onclick="closeDlg('postDlg');openEdit('${p.id}')">Editar</button>
@@ -2252,6 +2371,500 @@ function renderAll() {
   dsHash();
   if (window.RPSync) RPSync.start();
 })();
+</script>
+<script>
+/* ══════════ v6 · movimento ══════════ */
+function rmotion(){ return matchMedia('(prefers-reduced-motion:reduce)').matches; }
+const isMob = () => matchMedia('(max-width:860px)').matches;
+let _origin = null;
+
+/* menu em pílula: marcador deslizante + estado */
+function moveInk(){
+  const nav = $('crumb'); if (!nav) return;
+  const b = nav.querySelector('[aria-selected="true"]'); if (!b || !b.offsetWidth) return;
+  nav.style.setProperty('--ink-x', b.offsetLeft + 'px'); nav.style.setProperty('--ink-w', b.offsetWidth + 'px'); nav.classList.add('has-ink');
+}
+function syncTabs(){
+  const nav = $('crumb'); if (!nav) return;
+  const v = localStorage.getItem('rp_view') === 'cal' ? 'cal' : 'grid';
+  const act = (isMob() && !selId) || (!isMob() && false) ? 'clientes' : (selId ? v : 'clientes');
+  nav.querySelectorAll('button').forEach(b => {
+    b.setAttribute('aria-selected', b.dataset.t === act);
+    if (b.dataset.t !== 'clientes') b.disabled = !selId;
+  });
+  moveInk();
+}
+function navTab(t){
+  if (t === 'clientes') {
+    if (isMob()) { backToList(); }
+    else { const si = $('cSearch'); if (si) { si.focus(); const sp = document.querySelector('.panel.side'); if (sp && sp.animate && !rmotion()) sp.animate([{ boxShadow: '0 0 0 0 rgba(255,77,18,.6)' }, { boxShadow: '0 0 0 10px rgba(255,77,18,0)' }], { duration: 700 }); } }
+    return;
+  }
+  if (!selId) return;
+  setView(t);
+}
+addEventListener('resize', () => { syncTabs(); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveInk);
+
+/* deslize ao trocar cliente / visão */
+function slideIn(el, dir){
+  if (rmotion() || !el || !el.animate) return;
+  el.animate([{ opacity: 0, transform: 'translateX(' + (dir * 34) + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 440, easing: 'cubic-bezier(.2,.85,.25,1)' });
+}
+(function(){
+  const _sel = selectClient, _view = setView, _all = renderAll, _back = backToList;
+  selectClient = function(id){ _sel(id); slideIn($('detail'), 1); };
+  backToList = function(){ _back(); slideIn(document.querySelector('.side-wrap'), -1); };
+  setView = function(v){ const prev = localStorage.getItem('rp_view'); _view(v); syncTabs(); if (prev !== v) slideIn($('postsBox'), v === 'cal' ? 1 : -1); };
+  renderAll = function(){ _all(); syncTabs(); decorateEmpty(); };
+})();
+
+/* números e barras ao trocar mês/cliente */
+(function(){
+  const _rp = renderPeriod;
+  renderPeriod = function(){
+    const before = lastKey; _rp(); 
+    if (lastKey !== before) {
+      const el = document.querySelector('.bigpct');
+      if (el && !rmotion()) {
+        const txt = el.firstChild, to = parseInt(txt && txt.nodeValue, 10);
+        if (isFinite(to)) { const t0 = performance.now(); const fr = n => { const k = Math.min(1, (n - t0) / 650), e = 1 - Math.pow(1 - k, 3); txt.nodeValue = Math.round(to * e) + '%'; if (k < 1) requestAnimationFrame(fr); }; requestAnimationFrame(fr); }
+      }
+    }
+  };
+})();
+
+/* diálogos: saída animada, sheet com arrastar para fechar, expansão a partir do card */
+(function(){
+  const _close = HTMLDialogElement.prototype.close, _show = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.close = function(rv){
+    if (!this.open) return _close.call(this, rv);
+    if (this.__closing) return;
+    if (rmotion() || !this.animate) return _close.call(this, rv);
+    this.__closing = true;
+    const sheet = isMob(), dur = sheet ? 260 : 190;
+    const fin = () => {
+      if (!this.__closing) return; this.__closing = false; this.__finish = null;
+      _close.call(this, rv); this.getAnimations().forEach(a => a.cancel()); this.style.transform = ''; this.classList.remove('no-anim');
+    };
+    this.__finish = fin;
+    const kf = sheet ? [{ transform: this.style.transform || 'none' }, { transform: 'translateY(105%)' }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.95) translateY(12px)' }];
+    const a = this.animate(kf, { duration: dur, easing: 'cubic-bezier(.4,0,.9,.5)', fill: 'forwards' });
+    try { this.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, fill: 'forwards', pseudoElement: '::backdrop' }); } catch (e) {}
+    a.onfinish = fin; setTimeout(fin, dur + 120);
+  };
+  HTMLDialogElement.prototype.showModal = function(){
+    if (this.__finish) this.__finish();
+    const r = _show.call(this);
+    if (_origin && !isMob()) expandFrom(this, _origin);
+    _origin = null; return r;
+  };
+  document.addEventListener('cancel', e => { if (e.target && e.target.tagName === 'DIALOG') { e.preventDefault(); e.target.close(); } }, true);
+  let st = null;
+  document.addEventListener('pointerdown', e => {
+    if (!isMob() || e.pointerType === 'mouse') return;
+    const d = e.target.closest && e.target.closest('dialog'); if (!d || !d.open) return;
+    if (e.clientY - d.getBoundingClientRect().top > 72) return;
+    st = { d, y0: e.clientY, t0: performance.now(), id: e.pointerId, dy: 0 };
+  });
+  document.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    st.dy = Math.max(0, e.clientY - st.y0); st.d.style.transform = 'translateY(' + st.dy + 'px)';
+  });
+  const end = e => {
+    if (!st || (e && e.pointerId !== st.id)) return;
+    const { d, dy, t0 } = st; st = null; const v = dy / Math.max(1, performance.now() - t0);
+    if (dy > 110 || (dy > 30 && v > .6)) d.close();
+    else if (dy > 0) { d.animate([{ transform: 'translateY(' + dy + 'px)' }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.9,.25,1)' }); d.style.transform = ''; }
+  };
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+})();
+function expandFrom(d, el){
+  if (rmotion() || !d.animate || !el || !el.getBoundingClientRect) return;
+  const r = el.getBoundingClientRect(), b = d.getBoundingClientRect(); if (!r.width || !b.width) return;
+  const dx = (r.left + r.width / 2) - (b.left + b.width / 2), dy = (r.top + r.height / 2) - (b.top + b.height / 2);
+  const sc = Math.min(.92, Math.max(.2, r.width / b.width));
+  d.classList.add('no-anim');
+  d.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ')', opacity: 0, offset: 0 }, { opacity: 1, offset: .35 }, { transform: 'none', opacity: 1, offset: 1 }], { duration: 520, easing: 'cubic-bezier(.2,.9,.25,1)' });
+}
+document.addEventListener('click', e => { const o = e.target.closest && e.target.closest('.th,.next'); if (o) { _origin = o; setTimeout(() => { _origin = null; }, 0); } }, true);
+
+/* esqueleto durante a sincronização */
+(function(){
+  const b = $('syncBtn'); if (!b || !window.MutationObserver) return;
+  new MutationObserver(() => document.body.classList.toggle('skel', b.dataset.s === 'sync' && !!state.clients.length && !$('postsBox').children.length)).observe(b, { attributes: true, attributeFilter: ['data-s'] });
+})();
+
+/* vazios ilustrados */
+const ILL = {
+  cli: '<svg viewBox="0 0 160 120" aria-hidden="true"><rect x="40" y="26" width="80" height="80" rx="16" fill="#1a1a1c" stroke="#2a2a2e"/><circle cx="80" cy="56" r="14" fill="#ff4d12"/><path d="M52 98c2-16 14-24 28-24s26 8 28 24" fill="#ff6e22" opacity=".85"/><circle cx="124" cy="30" r="11" fill="#fff"/><path d="M124 24v12M118 30h12" stroke="#ff4d12" stroke-width="3" stroke-linecap="round"/></svg>',
+  sel: '<svg viewBox="0 0 160 120" aria-hidden="true"><rect x="30" y="26" width="64" height="80" rx="14" fill="#1a1a1c" stroke="#2a2a2e"/><rect x="66" y="16" width="64" height="80" rx="14" fill="#ff4d12" transform="rotate(6 98 56)"/><rect x="78" y="34" width="34" height="6" rx="3" fill="#fff" opacity=".9" transform="rotate(6 98 56)"/><rect x="78" y="48" width="42" height="6" rx="3" fill="#fff" opacity=".55" transform="rotate(6 98 56)"/></svg>'
+};
+function decorateEmpty(){
+  const e = document.querySelector('#detail .empty:not(.ill)'); if (!e) return;
+  e.classList.add('ill'); e.insertAdjacentHTML('afterbegin', '<div class="empty-ill">' + (e.classList.contains('big') ? ILL.cli : ILL.sel) + '</div>');
+}
+updateCrumb = function(){};
+syncTabs(); decorateEmpty();
+</script>
+<script>
+/* ══════════ v7 ══════════ */
+I.link = '<svg class="i " viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>';
+const LSget = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch (e) { return d; } };
+const LSset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const natCmp = (a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' });
+
+/* ── 1 · várias artes: pasta inteira + distribuição das datas ── */
+const DIAS = { dia: [0,1,2,3,4,5,6], util: [1,2,3,4,5], smw: [1,3,5], tts: [2,4,6], sem: [1] };
+function distribDates(n, start, mode) {
+  const out = [];
+  if (mode === 'd2') { for (let i = 0; i < n; i++) out.push(addDays(start, i * 2)); return out; }
+  const ok = DIAS[mode] || DIAS.dia; let cur = start, guard = 0;
+  while (out.length < n && guard++ < 4000) { if (ok.includes(new Date(cur + 'T00:00').getDay())) out.push(cur); cur = addDays(cur, 1); }
+  return out;
+}
+function applyDist() {
+  const st = $('bdStart').value; if (!isISO(st)) { toast('Informe a data inicial'); return; }
+  const mode = $('bdMode').value; LSset('rp_bd_mode', mode);
+  const ds = distribDates(bulkItems.length, st, mode);
+  bulkItems.forEach((it, i) => { it.date = ds[i] || st; });
+  renderBulk();
+}
+function dateFromName(n) {
+  let m = /(20\d\d)[-_.]?(0[1-9]|1[0-2])[-_.]?(0[1-9]|[12]\d|3[01])/.exec(n); if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = /(0[1-9]|[12]\d|3[01])[-_.](0[1-9]|1[0-2])[-_.](20\d\d)/.exec(n); if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return null;
+}
+function useFileDates() {
+  bulkItems.forEach(it => { it.date = dateFromName(it.file.name) || isoLocal(new Date(it.file.lastModified || Date.now())); });
+  renderBulk();
+}
+(function () {
+  const _sb = startBulk;
+  startBulk = function (files) {
+    const arr = [...files].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic)$/i.test(f.name));
+    if (!arr.length) { toast('Nenhuma imagem encontrada'); return; }
+    arr.sort((a, b) => natCmp(a.webkitRelativePath || a.name, b.webkitRelativePath || b.name));
+    _sb(arr);
+    $('bdStart').value = isISO($('pDate').value) ? $('pDate').value : hoje;
+    $('bdMode').value = LSget('rp_bd_mode', 'dia');
+    const named = bulkItems.map(it => dateFromName(it.file.name));
+    if (named.every(Boolean)) { bulkItems.forEach((it, i) => { it.date = named[i]; }); renderBulk(); }
+    else applyDist();
+  };
+})();
+async function readEntries(items) {
+  const out = [];
+  const walk = async en => {
+    if (en.isFile) { await new Promise(r => en.file(f => { out.push(f); r(); }, r)); }
+    else if (en.isDirectory) {
+      const rd = en.createReader();
+      for (;;) { const batch = await new Promise(r => rd.readEntries(r, () => r([]))); if (!batch.length) break; for (const b of batch) await walk(b); }
+    }
+  };
+  for (const it of items) { const en = it.webkitGetAsEntry && it.webkitGetAsEntry(); if (en) await walk(en); }
+  return out;
+}
+function pickDir(inp) { const fs = [...inp.files]; inp.value = ''; if (!fs.length) return; closeDlg('addDlg'); startBulk(fs); }
+(function () {
+  const onDrop = async e => {
+    const items = [...((e.dataTransfer && e.dataTransfer.items) || [])];
+    const hasDir = items.some(i => { const en = i.webkitGetAsEntry && i.webkitGetAsEntry(); return en && en.isDirectory; });
+    if (!hasDir) return false;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const files = await readEntries(items);
+    if ($('addDlg').open) closeDlg('addDlg');
+    startBulk(files); return true;
+  };
+  $('drop').addEventListener('drop', onDrop, true);
+  const det = $('detail');
+  det.addEventListener('dragover', e => { if (current() && e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  det.addEventListener('drop', async e => {
+    if (!current() || !e.dataTransfer) return; e.preventDefault();
+    const items = [...e.dataTransfer.items];
+    const files = items.some(i => i.webkitGetAsEntry && i.webkitGetAsEntry() && i.webkitGetAsEntry().isDirectory) ? await readEntries(items) : [...e.dataTransfer.files];
+    if (files.length) startBulk(files);
+  });
+})();
+
+/* ── 2 · importar posts do Instagram (arquivo "Baixar suas informações") ── */
+let igItems = [];
+const fixIG = t => { try { return decodeURIComponent(escape(String(t || ''))); } catch (e) { return String(t || ''); } };
+async function unzipAny(buf) {
+  const v = new DataView(buf), u8 = new Uint8Array(buf); let e = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 22 - 65557); i--) if (v.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('zip inválido');
+  const count = v.getUint16(e + 10, true); let p = v.getUint32(e + 16, true); const dec = new TextDecoder(), map = new Map();
+  for (let k = 0; k < count; k++) {
+    const method = v.getUint16(p + 10, true), csize = v.getUint32(p + 20, true), nlen = v.getUint16(p + 28, true), xlen = v.getUint16(p + 30, true), clen = v.getUint16(p + 32, true), loc = v.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nlen));
+    const start = loc + 30 + v.getUint16(loc + 26, true) + v.getUint16(loc + 28, true);
+    map.set(name, async () => {
+      const raw = u8.slice(start, start + csize);
+      if (method === 0) return new Blob([raw]);
+      if (method === 8 && window.DecompressionStream) return new Blob([await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()]);
+      throw new Error('compactação não suportada');
+    });
+    p += 46 + nlen + xlen + clen;
+  }
+  return map;
+}
+function openIG() {
+  if (!current()) { toast('Escolha um cliente primeiro'); return; }
+  igItems = [];
+  $('igBody').innerHTML = `
+    <div class="dh"><h2>Importar do Instagram</h2><button type="button" class="icon ghost" onclick="closeDlg('igDlg')" aria-label="Fechar">${I.x}</button></div>
+    <p class="small" style="margin:6px 0 14px">Peça em Instagram › Central de Contas › Suas informações › Baixar suas informações (formato JSON, tipo “Publicações”). Depois escolha aqui a pasta extraída ou o .zip.</p>
+    <div class="row"><button type="button" onclick="$('igDir').click()">Escolher pasta</button><button type="button" class="sec" onclick="$('igFile').click()">Escolher .zip / arquivos</button></div>`;
+  $('igDlg').showModal();
+}
+async function igLoad(files) {
+  if (!files.length) return;
+  const cur = current(); if (!cur) return;
+  $('igBody').innerHTML = '<div class="dh"><h2>Lendo arquivos…</h2></div><p class="small">Procurando as publicações.</p>';
+  try {
+    const src = new Map();
+    for (const f of files) {
+      if (/\.zip$/i.test(f.name)) { const m = await unzipAny(await f.arrayBuffer()); m.forEach((g, k) => src.set(k, g)); }
+      else src.set(f.webkitRelativePath || f.name, async () => f);
+    }
+    const keys = [...src.keys()];
+    const jsons = keys.filter(k => /(^|\/)posts_\d+\.json$/i.test(k));
+    if (!jsons.length) throw new Error('Não achei o arquivo de publicações (posts_1.json).');
+    const byBase = new Map(); keys.forEach(k => byBase.set(k.split('/').pop(), k));
+    const find = uri => { if (!uri) return null; if (src.has(uri)) return uri; const k = keys.find(x => x.endsWith(uri)); return k || byBase.get(uri.split('/').pop()) || null; };
+    const out = []; let videos = 0;
+    for (const jk of jsons) {
+      let arr = JSON.parse(await (await src.get(jk)()).text());
+      if (!Array.isArray(arr)) arr = arr.posts || arr.media || [];
+      for (const e of arr) {
+        const media = (e.media || []).filter(Boolean);
+        const m = media.find(x => /\.(jpe?g|png|webp|heic)$/i.test(x.uri || '')) || null;
+        if (!m) { if (media.length) videos++; continue; }
+        const ts = e.creation_timestamp || m.creation_timestamp; if (!ts) continue;
+        const k = find(m.uri); if (!k) continue;
+        out.push({ date: isoLocal(new Date(ts * 1000)), cap: fixIG(e.title || m.title || '').trim().slice(0, 2200), key: k, get: src.get(k), on: true });
+      }
+    }
+    out.sort((a, b) => b.date.localeCompare(a.date));
+    igItems = out; igSkipVideos = videos; igOnlyRange = true;
+    renderIG();
+  } catch (err) {
+    $('igBody').innerHTML = `<div class="dh"><h2>Importar do Instagram</h2><button type="button" class="icon ghost" onclick="closeDlg('igDlg')">${I.x}</button></div><p class="small">${esc(err.message || 'Não consegui ler esses arquivos.')}</p><div class="row" style="margin-top:12px"><button type="button" onclick="openIG()">Tentar de novo</button></div>`;
+  }
+}
+let igSkipVideos = 0, igOnlyRange = true;
+function igVisible() { return igItems.filter(x => !igOnlyRange || (x.date >= range.start && x.date <= range.end)); }
+async function renderIG() {
+  const vis = igVisible();
+  const rows = [];
+  for (let i = 0; i < Math.min(vis.length, 120); i++) {
+    const it = vis[i]; if (!it.url) { try { it.url = URL.createObjectURL(await it.get()); } catch (e) { it.url = ''; } }
+    rows.push(`<label class="rowitem"><input type="checkbox" ${it.on ? 'checked' : ''} onchange="igItems[${igItems.indexOf(it)}].on=this.checked;igCount()"><img src="${it.url}" alt=""><div><div class="d">${fmtDate(it.date)}</div><div class="t">${esc(it.cap) || '<i>sem legenda</i>'}</div></div></label>`);
+  }
+  $('igBody').innerHTML = `
+    <div class="dh"><h2>Importar do Instagram</h2><button type="button" class="icon ghost" onclick="closeDlg('igDlg')" aria-label="Fechar">${I.x}</button></div>
+    <p class="small">${igItems.length} publicação(ões) com imagem${igSkipVideos ? ` · ${igSkipVideos} vídeo(s)/reel(s) ignorado(s)` : ''}.</p>
+    <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" ${igOnlyRange ? 'checked' : ''} onchange="igOnlyRange=this.checked;renderIG()"> Só o período exibido (${esc(isFullMonth() ? monthLabel(range.start.slice(0, 7)) : periodoLabel())})</label>
+    <div class="rowlist">${rows.join('') || '<p class="small">Nada neste período.</p>'}</div>
+    <div class="row" style="justify-content:flex-end"><button type="button" class="sec" onclick="closeDlg('igDlg')">Cancelar</button><button type="button" id="igGo" onclick="igImport()">Importar</button></div>`;
+  igCount();
+}
+function igCount() { const n = igVisible().filter(x => x.on).length; const b = $('igGo'); if (b) { b.textContent = `Importar ${n}`; b.disabled = !n; } }
+async function igImport() {
+  const c = current(); if (!c) return;
+  const sel = igVisible().filter(x => x.on); let ok = 0, dup = 0, fail = 0, first = null;
+  $('igGo').disabled = true; $('igGo').textContent = 'Importando…';
+  for (const it of sel) {
+    if (c.posts.some(p => p.date === it.date && (p.leg || '') === it.cap && it.cap)) { dup++; continue; }
+    try {
+      const blob = await it.get(); const img = await compressImage(new File([blob], it.key.split('/').pop(), { type: blob.type || 'image/jpeg' }));
+      const p = { id: uid(), date: it.date, status: 'postada', hasImage: false, w: img.w, h: img.h, obs: sortear('postada'), leg: it.cap || undefined, custom: false };
+      c.posts.push(p); await setImage(p, img.data); ok++;
+      if (!first || it.date < first) first = it.date;
+    } catch (e) { fail++; }
+  }
+  igItems.forEach(x => x.url && URL.revokeObjectURL(x.url)); igItems = [];
+  $('igDlg').close();
+  if (first) range = { start: first.slice(0, 7) + '-01', end: monthEnd(first.slice(0, 7)) };
+  await saveState(); renderAll();
+  toast(`${ok} post(s) importado(s)` + (dup ? `, ${dup} já existiam` : '') + (fail ? `, ${fail} com erro` : ''));
+}
+
+/* ── 3 · link do relatório para o cliente ── */
+const PUB_BUCKET = 'relatpost-pub';
+const pubMap = () => LSget('rp_pub', {});
+const rndTok = () => { const a = new Uint8Array(16); crypto.getRandomValues(a); return [...a].map(b => b.toString(16).padStart(2, '0')).join(''); };
+function linkFor(tok) {
+  const u = localStorage.getItem('ds_sb_url') || '', k = localStorage.getItem('ds_sb_key') || '';
+  return new URL('relatorio.html', location.href).href.split('#')[0] + '#t=' + tok + '&u=' + encodeURIComponent(u) + '&k=' + encodeURIComponent(k);
+}
+function openLink() {
+  const c = current(); if (!c) return;
+  const tok = pubMap()[c.id];
+  const when = LSget('rp_pub_at', {})[c.id];
+  $('linkBody').innerHTML = `
+    <div class="dh"><h2>Link do relatório</h2><button type="button" class="icon ghost" onclick="closeDlg('linkDlg')" aria-label="Fechar">${I.x}</button></div>
+    <p class="small" style="margin:6px 0 4px">${esc(c.name)} · ${esc(isFullMonth() ? monthLabel(range.start.slice(0, 7)) : periodoLabel())}</p>
+    <p class="small">O cliente abre pelo navegador, sem baixar nada. Cada vez que você publica, o link mostra o período que está na tela agora.</p>
+    ${tok ? `<div class="linkbox"><input id="lkIn" readonly value="${esc(linkFor(tok))}" onclick="this.select()"><button type="button" class="sec" onclick="copyLink()">Copiar</button></div>
+      <p class="small">Última publicação: ${when ? new Date(when).toLocaleString('pt-BR') : '—'}</p>` : ''}
+    <div class="row" style="margin-top:14px;flex-wrap:wrap">
+      <button type="button" onclick="publishLink()">${tok ? 'Atualizar com este período' : 'Gerar link'}</button>
+      ${tok ? `<button type="button" class="sec" onclick="shareLink()">Enviar no WhatsApp</button><button type="button" class="danger" onclick="unpublishLink()">Desativar</button>` : ''}
+    </div>`;
+  $('linkDlg').showModal();
+}
+async function copyLink() { const v = $('lkIn').value; try { await navigator.clipboard.writeText(v); toast('Link copiado'); } catch (e) { $('lkIn').select(); document.execCommand('copy'); toast('Link copiado'); } }
+function shareLink() {
+  const c = current(), tok = pubMap()[c.id]; if (!c || !tok) return;
+  const msg = `Olá, ${c.name}! Seu relatório de postagens de ${isFullMonth() ? monthLabel(range.start.slice(0, 7)) : periodoLabel()} está aqui: ${linkFor(tok)}`;
+  window.open(`https://wa.me/${normPhone(c.phone)}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+function shrinkImg(dataURL, max) {
+  return new Promise((res, rej) => {
+    const im = new Image(); im.onload = () => {
+      const r = Math.min(1, max / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(im.width * r); cv.height = Math.round(im.height * r);
+      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); cv.toBlob(b => b ? res(b) : rej(new Error('img')), 'image/jpeg', .78);
+    }; im.onerror = () => rej(new Error('img')); im.src = dataURL;
+  });
+}
+async function publishLink() {
+  const c = current(); if (!c) return;
+  const cx = window.RPSync && RPSync.client();
+  if (!cx) { toast('Entre na conta em "Sincronizar" para gerar o link'); return; }
+  const map = pubMap(); const tok = map[c.id] || (map[c.id] = rndTok()); LSset('rp_pub', map);
+  const posts = getPosts(c); toast('Publicando…');
+  try {
+    const out = [];
+    for (const p of posts) {
+      let url = '';
+      const im = imgOf(p);
+      if (im) {
+        const blob = await shrinkImg(im, 1000);
+        const path = `${tok}/${p.id}.jpg`;
+        const up = await cx.sb.storage.from(PUB_BUCKET).upload(path, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '60' });
+        if (up.error) throw up.error;
+        url = cx.sb.storage.from(PUB_BUCKET).getPublicUrl(path).data.publicUrl + '?v=' + Date.now();
+      }
+      out.push({ d: p.date, s: p.status, t: obsDe(p), l: p.leg || '', i: url, w: p.w, h: p.h });
+    }
+    const postadas = posts.filter(p => p.status === 'postada').length;
+    const payload = { nome: c.name, logo: c.logo || '', periodo: isFullMonth() ? monthLabel(range.start.slice(0, 7)) : periodoLabel(), total: posts.length, postadas, agendadas: posts.length - postadas, meta: (contratoDe(c) || {}).n || 0, posts: out };
+    const r = await cx.sb.from('relatpost_publico').upsert({ token: tok, owner: cx.user.id, nome: c.name, payload, updated_at: new Date().toISOString() });
+    if (r.error) throw r.error;
+    const at = LSget('rp_pub_at', {}); at[c.id] = Date.now(); LSset('rp_pub_at', at);
+    openLink(); toast('Link atualizado');
+  } catch (e) {
+    toast(/relation|does not exist|bucket|not found/i.test(String(e.message || e)) ? 'Falta rodar o SQL do link no Supabase (arquivo Supabase_link_relatorio.sql)' : 'Não consegui publicar agora');
+  }
+}
+async function unpublishLink() {
+  const c = current(); const map = pubMap(), tok = map[c.id]; if (!tok) return;
+  if (!confirm('Desativar o link? Quem tiver o endereço deixa de ver o relatório.')) return;
+  const cx = window.RPSync && RPSync.client();
+  try {
+    if (cx) {
+      await cx.sb.from('relatpost_publico').delete().eq('token', tok);
+      const ls = await cx.sb.storage.from(PUB_BUCKET).list(tok, { limit: 1000 });
+      if (ls.data && ls.data.length) await cx.sb.storage.from(PUB_BUCKET).remove(ls.data.map(f => tok + '/' + f.name));
+    }
+  } catch (e) {}
+  delete map[c.id]; LSset('rp_pub', map); openLink(); toast('Link desativado');
+}
+
+/* ── 4 · aviso de backup ── */
+function renderBkBanner() {
+  const b = $('bkBanner'); if (!b) return;
+  const last = lastBackupAt(), dias = last ? Math.floor((Date.now() - last) / 86400000) : null;
+  const snooze = +localStorage.getItem('rp_bk_snooze') || 0;
+  const show = state.clients.length && (dias === null || dias > 14) && Date.now() > snooze;
+  b.hidden = !show; if (!show) return;
+  b.innerHTML = `<span>${dias === null ? 'Você ainda não fez nenhum backup.' : `Já faz ${dias} dias sem backup.`} Seus dados ficam neste aparelho.</span><button type="button" onclick="exportBackup().then(renderBkBanner)">Fazer backup agora</button><button type="button" class="sec" onclick="localStorage.setItem('rp_bk_snooze',Date.now()+864e5);renderBkBanner()">Lembrar amanhã</button>`;
+}
+
+/* ── 5 · histórico de versões ── */
+const hashStr = t => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); };
+let lastSnapAt = 0;
+async function snap(reason) {
+  try {
+    const clone = JSON.parse(JSON.stringify(state)); clone.clients.forEach(c => { c.logo = ''; });
+    const json = JSON.stringify(clone), h = hashStr(json), idx = (await idbGet('hist_idx')) || [];
+    if (idx[0] && idx[0].h === h) return;
+    const t = Date.now(); await idbSet('hist_' + t, json);
+    idx.unshift({ t, h, c: clone.clients.length, p: clone.clients.reduce((a, x) => a + x.posts.length, 0), r: reason || 'auto' });
+    while (idx.length > 30) { const o = idx.pop(); await idbDel('hist_' + o.t); }
+    await idbSet('hist_idx', idx);
+  } catch (e) {}
+}
+(function () {
+  const _ss = saveState;
+  saveState = async function () { await _ss(); renderBkBanner(); if (Date.now() - lastSnapAt > 20 * 60000) { lastSnapAt = Date.now(); snap('automático'); } };
+  const _dc = deleteClient; deleteClient = async function (id) { await snap('antes de excluir cliente'); return _dc(id); };
+  const _dp = deletePost; deletePost = async function (id) { await snap('antes de excluir arte'); return _dp(id); };
+  const _ib = importBackupFile; importBackupFile = async function (e) { await snap('antes de importar backup'); return _ib(e); };
+})();
+async function openHist() {
+  const idx = (await idbGet('hist_idx')) || [];
+  $('histBody').innerHTML = `
+    <div class="dh"><h2>Histórico de versões</h2><button type="button" class="icon ghost" onclick="closeDlg('histDlg')" aria-label="Fechar">${I.x}</button></div>
+    <p class="small" style="margin:6px 0 10px">Cópias dos seus clientes e artes, guardadas neste aparelho. Imagens apagadas depois não voltam.</p>
+    <div class="row"><button type="button" class="sec small" onclick="snap('manual').then(openHist)">Criar ponto agora</button></div>
+    <div class="rowlist">${idx.map(h => `<div class="hrow"><div><b>${new Date(h.t).toLocaleString('pt-BR')}</b><small>${h.c} cliente(s) · ${h.p} arte(s) · ${esc(h.r)}</small></div><button type="button" class="sec small" onclick="histRestore(${h.t})">Restaurar</button></div>`).join('') || '<p class="small">Ainda sem versões. Elas são criadas sozinhas enquanto você usa.</p>'}</div>`;
+  if (!$('histDlg').open) $('histDlg').showModal();
+}
+async function histRestore(t) {
+  const json = await idbGet('hist_' + t); if (!json) { toast('Versão não encontrada'); return; }
+  if (!confirm('Voltar para a versão de ' + new Date(t).toLocaleString('pt-BR') + '? A versão atual fica guardada no histórico.')) return;
+  await snap('antes de restaurar');
+  const cur = new Map(state.clients.map(c => [c.id, c]));
+  const r = sanitizeState(JSON.parse(json), {}).state;
+  r.clients.forEach(c => { const o = cur.get(c.id); if (o && o.logo) c.logo = o.logo; c.posts.forEach(p => { if (p.hasImage && !imgCache[p.id]) p.hasImage = false; }); });
+  state = r; if (selId && !current()) selId = null;
+  await saveState(); renderAll(); openHist(); toast('Versão restaurada');
+}
+
+/* ── 6 · contrato (artes por mês) vindo do DS Gestão ── */
+const contratoDe = c => (LSget('rp_contrato', {}))[c.id] || null;
+function dsContrato(c, d) {
+  const flat = Object.assign({}, d); Object.keys(d).forEach(k => { const v = d[k]; if (v && typeof v === 'object' && !Array.isArray(v)) Object.keys(v).forEach(k2 => { flat[k + '.' + k2] = v[k2]; }); });
+  let best = null;
+  for (const [k, v] of Object.entries(flat)) {
+    const n = typeof v === 'number' ? v : (typeof v === 'string' && /^\d{1,3}$/.test(v.trim()) ? +v : null);
+    if (n === null || n <= 0 || n > 300) continue;
+    const kk = norm(k); let sc = 0;
+    if (/arte/.test(kk)) sc += 3; if (/post/.test(kk)) sc += 2; if (/mes|mensal/.test(kk)) sc += 2; if (/qtd|quant|total|plano|pacote|contrat/.test(kk)) sc += 1;
+    if (sc >= 3 && (!best || sc > best.sc)) best = { sc, n, k };
+  }
+  const m = LSget('rp_contrato', {}); const old = m[c.id];
+  if (old && old.src === 'manual') return;
+  if (best) { if (!old || old.n !== best.n) { m[c.id] = { n: best.n, src: 'ds', k: best.k }; LSset('rp_contrato', m); } }
+}
+function setContrato() {
+  const c = current(); if (!c) return; const cur = contratoDe(c);
+  const v = prompt('Quantas artes por mês estão combinadas com ' + c.name + '? (vazio remove)', cur ? cur.n : '');
+  if (v === null) return;
+  const m = LSget('rp_contrato', {}); const n = parseInt(v, 10);
+  if (isFinite(n) && n > 0) m[c.id] = { n, src: 'manual' }; else delete m[c.id];
+  LSset('rp_contrato', m); renderPeriod();
+}
+(function () {
+  const _rp = renderPeriod;
+  renderPeriod = function () {
+    _rp();
+    const c = current(), box = $('ovBox'); if (!c || !box) return;
+    const ct = contratoDe(c); let html = '';
+    if (ct && isFullMonth()) {
+      const n = getPosts(c).length, low = n < ct.n;
+      html = `<div class="contrato ${low ? 'low' : 'ok'}"><b>Contrato:</b> ${ct.n} artes por mês · ${n} no período ${low ? `· <b>faltam ${ct.n - n}</b>` : '· em dia'}<button type="button" class="lnk" onclick="setContrato()">editar</button></div>`;
+    } else if (!ct) html = `<div class="contrato"><button type="button" class="lnk" onclick="setContrato()">+ Definir artes por mês combinadas</button></div>`;
+    if (html) box.insertAdjacentHTML('afterbegin', html);
+  };
+  const _dpl = dsPull; dsPull = async function (f) { await _dpl(f); try { if (current()) renderPeriod(); } catch (e) {} };
+  const _ra = renderAll; renderAll = function () { _ra(); renderBkBanner(); };
+})();
+renderBkBanner();
 </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
 </body>
