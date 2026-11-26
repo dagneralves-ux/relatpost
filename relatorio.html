@@ -37,7 +37,7 @@ const q=new URLSearchParams(location.hash.slice(1)), tok=q.get('t'), u=(q.get('u
 const fd=iso=>{const[y,m,d]=iso.split('-');return d+'/'+m+'/'+y};
 let DATA=null;
 function ini(n){return String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()}
-function show(i){const p=DATA.posts[i];$('lbi').src=p.i||'';$('lbi').style.display=p.i?'block':'none';$('lbt').innerHTML='<b>'+fd(p.d)+' · '+(p.s==='postada'?'Postada':'Agendada')+'</b>'+(p.l?'<p>'+esc(p.l)+'</p>':'<p>'+esc(p.t)+'</p>');$('lb').classList.add('on')}
+function show(i){const p=DATA.posts[i];$('lbi').src=p.i||'';$('lbi').style.display=p.i?'block':'none';const tx=p.l||p.t;$('lbt').innerHTML=DATA.avulso?(tx?'<p style="margin:0">'+esc(tx)+'</p>':''):'<b>'+fd(p.d)+' · '+(p.s==='postada'?'Postada':'Agendada')+'</b>'+(tx?'<p>'+esc(tx)+'</p>':'');$('lb').classList.add('on')}
 async function go(){
   if(!tok||!u||!k){$('app').innerHTML='<div class="msg">Link incompleto. Peça um novo link ao seu designer.</div>';return}
   try{
@@ -45,11 +45,11 @@ async function go(){
     if(!r.ok)throw 0; const d=await r.json(); if(!d||!d.posts)throw 0; DATA=d;
     document.title='Relatório · '+d.nome;
     const pct=d.total?Math.round(d.postadas/d.total*100):0;
-    $('app').innerHTML=`<header><div class="av">${d.logo?`<img src="${esc(d.logo)}" alt="">`:esc(ini(d.nome))}</div><div><h1>${esc(d.nome)}</h1><div class="sub">Relatório de postagens · ${esc(d.periodo)}</div></div></header>
-    <div class="chips"><div class="chip hi"><b>${d.total}</b><span>Artes do período</span></div><div class="chip"><b>${d.postadas}</b><span>Postadas</span></div><div class="chip"><b>${d.agendadas}</b><span>Agendadas</span></div></div>
-    <div class="bar" role="img" aria-label="${pct}% postadas"><i style="width:${pct}%"></i></div>
+    $('app').innerHTML=`<header><div class="av">${d.logo?`<img src="${esc(d.logo)}" alt="">`:esc(ini(d.nome))}</div><div><h1>${esc(d.nome)}</h1><div class="sub">${d.avulso?'Relatório de serviços':'Relatório de postagens · '+esc(d.periodo)}</div></div></header>
+    ${d.avulso?`<div class="chips" style="grid-template-columns:1fr"><div class="chip hi"><b>${d.total}</b><span>${d.total===1?'Serviço':'Serviços'} realizados</span></div></div>`:`<div class="chips"><div class="chip hi"><b>${d.total}</b><span>Artes do período</span></div><div class="chip"><b>${d.postadas}</b><span>Postadas</span></div><div class="chip"><b>${d.agendadas}</b><span>Agendadas</span></div></div>
+    <div class="bar" role="img" aria-label="${pct}% postadas"><i style="width:${pct}%"></i></div>`}
     ${d.meta?`<p class="meta">Combinado: ${d.meta} artes por mês · entregues: ${d.total}</p>`:''}
-    <div class="grid">${d.posts.map((p,i)=>`<article class="card" style="animation-delay:${Math.min(i,12)*40}ms" onclick="show(${i})"><div class="im">${p.i?`<img loading="lazy" src="${esc(p.i)}" alt="">`:''}</div><div class="bd"><div class="d">${fd(p.d)}</div><div class="t">${esc(p.l||p.t)}</div><span class="st ${p.s==='postada'?'p':''}">${p.s==='postada'?'Postada':'Agendada'}</span></div></article>`).join('')}</div>
+    <div class="grid">${d.posts.map((p,i)=>`<article class="card" style="animation-delay:${Math.min(i,12)*40}ms" onclick="show(${i})"><div class="im">${p.i?`<img loading="lazy" src="${esc(p.i)}" alt="">`:''}</div><div class="bd">${d.avulso?(p.l||p.t?`<div class="t" style="margin:0">${esc(p.l||p.t)}</div>`:''):`<div class="d">${fd(p.d)}</div><div class="t">${esc(p.l||p.t)}</div><span class="st ${p.s==='postada'?'p':''}">${p.s==='postada'?'Postada':'Agendada'}</span>`}</div></article>`).join('')}</div>
     <footer>Atualizado em ${d.atualizado?new Date(d.atualizado).toLocaleDateString('pt-BR'):''}</footer>`;
   }catch(e){$('app').innerHTML='<div class="msg">Não encontrei este relatório. O link pode ter sido desativado.</div>'}
 }
